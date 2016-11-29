@@ -9,6 +9,7 @@ import java.util.Set;
 
 
 import net.floodlightcontroller.routing.Path;
+import net.floodlightcontroller.core.FloodlightContext;
 import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
@@ -37,6 +38,8 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 
 import org.projectfloodlight.openflow.types.TransportPort;
+import net.floodlightcontroller.fdmcalculator.FDMCalculator; 
+
 
 
 import org.slf4j.Logger;
@@ -44,14 +47,20 @@ import org.slf4j.LoggerFactory;
 
 public class DropMeter{
 
-	    public void createMeter(IOFSwitch currentSwitch, OFPort currentPort,IOFSwitch nextSwitch, OFPort nexttPort ) {
+		public DropMeter(){
+			this.fdmservice = new FDMCalculator();
+		}
+
+	    public void createMeter(IOFSwitch currentSwitch, OFPort currentPort,IOFSwitch nextSwitch, OFPort nextPort ) {
 	    	 OFFactory meterFactory = OFFactories.getFactory(OFVersion.OF_13);
 	            OFMeterMod.Builder meterModBuilder = meterFactory.buildMeterMod()
 	                .setMeterId(meterid).setCommand(OFMeterModCommand.ADD);
 
 
 	            /*Please change the rate here. The switch&port needed are passed as parameter to this function. */
-	            int rate  = 1000; 
+	            // int rate  = 1000; 
+	            int rate = (int)(fdmservice.getFlowBW(currentSwitch, currentPort, nextSwitch, nextPort)*1000);
+	            //rate = (int)rate*1000;
 	            /*End of getRate()*/
 	            
 	            OFMeterBandDrop.Builder bandBuilder = meterFactory.meterBands().buildDrop()
@@ -106,5 +115,5 @@ public class DropMeter{
 	    }
 	    
 	    protected static int meterid = 1; 
-	  
+	    protected FDMCalculator fdmservice;
 }

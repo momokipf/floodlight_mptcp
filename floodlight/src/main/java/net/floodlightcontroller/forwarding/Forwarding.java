@@ -145,6 +145,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
     private static final long FLOWSET_MASK = ((1L << FLOWSET_BITS) - 1) << FLOWSET_SHIFT;
     private static final long FLOWSET_MAX = (long) (Math.pow(2, FLOWSET_BITS) - 1);
     protected static FlowSetIdRegistry flowSetIdRegistry;
+    private DropMeter dm;
     
     //private volatile Map<String, Path> map;
     
@@ -163,7 +164,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
     public final int k = 8 ;
 
-	private IPv4Address destcpIp2;
+
     
     private static String byteArray2Hex(final byte[] hash) {
 	    Formatter formatter = new Formatter();
@@ -664,7 +665,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                                         OFPort currentPort = p.getPath().get(1).getPortId();         
                                         IOFSwitch  nextSwitch = switchService.getSwitch((p.getPath().get(2).getNodeId()));
                                         OFPort nextPort = p.getPath().get(2).getPortId();
-                                        DropMeter dm = new DropMeter();
+                                        //DropMeter dm = new DropMeter();
                                         dm.createMeter(currentSwitch, currentPort, nextSwitch, nextPort);
                                         dm.bindMeterWithFlow(srcPort, destcpPort, srcIp2, currentSwitch, srctcpPort, p);
 
@@ -787,7 +788,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                                         OFPort currentPort = newPath.getPath().get(1).getPortId();         
                                         IOFSwitch  nextSwitch = switchService.getSwitch((newPath.getPath().get(2).getNodeId()));
                                         OFPort nextPort = newPath.getPath().get(2).getPortId();
-                                        DropMeter dm = new DropMeter();
+                                        //DropMeter dm = new DropMeter();
                                         dm.createMeter(currentSwitch, currentPort, nextSwitch, nextPort);
                                         dm.bindMeterWithFlow(srcPort, destcpPort, srcIp2, currentSwitch, srctcpPort, newPath);
 
@@ -898,7 +899,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                     OFPort currentPort = p.getPath().get(1).getPortId();         
                     IOFSwitch  nextSwitch = switchService.getSwitch((p.getPath().get(2).getNodeId()));
                     OFPort nextPort = p.getPath().get(2).getPortId();
-                    DropMeter dm = new DropMeter();
+                    //DropMeter dm = new DropMeter();
                     dm.createMeter(currentSwitch, currentPort, nextSwitch, nextPort);
                     dm.bindMeterWithFlow(srcPort, destcpPort, srcIp2, currentSwitch, srctcpPort, p);
 
@@ -1255,6 +1256,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         this.switchService = context.getServiceImpl(IOFSwitchService.class);
         this.linkService = context.getServiceImpl(ILinkDiscoveryService.class);
 
+        dm = new DropMeter();
         //this.map = new HashMap<String,Path>();
         this.flows = ExpiringMap.builder()
         		.expiration(5, TimeUnit.SECONDS)

@@ -49,6 +49,7 @@ import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
+import net.floodlightcontroller.dropmeter.DropMeter;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.packet.Ethernet;
@@ -61,6 +62,7 @@ import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.IRoutingDecisionChangedListener;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Path;
+import net.floodlightcontroller.routing.PathId;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.ExpiringMap;
 import net.floodlightcontroller.util.FlowModUtils;
@@ -146,17 +148,20 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
     
     //private volatile Map<String, Path> map;
     
-    private volatile ExpiringMap<String, MptcpConnection> flows;
+    private  ExpiringMap<String, MptcpConnection> flows;
     
-    private volatile ExpiringMap<String, ArrayList<Path>> pathCache;
+    private  ExpiringMap<String, ArrayList<Path>> pathCache;
     
+    private  ExpiringMap<String, Path> uniquepathcache;
     public Random randomGenerator;
     
-    private volatile ExpiringMap<String, Integer> primaryIps;
+    private  ExpiringMap<String, Integer> primaryIps;
     
+    private volatile Map<String,U64> flowidset;
+
     public final boolean randomForwarding=false;
 
-    public final int k = 4 ;
+    public final int k = 8 ;
 
 	private IPv4Address destcpIp2;
     
@@ -528,20 +533,20 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 srcPort,
                 dstAp.getNodeId(),
                 dstAp.getPortId());
-//        List<Path> multipath = routingEngineService.getPathsFast(srcSw, 
-//                dstAp.getNodeId(),2);
-//        log.info("multipath: size={}",multipath.size());
-//        for(Path p:multipath){
-//        	if(!p.getPath().isEmpty()){
-//        		log.info("pushRoute inPort={} route={} " +
-//                        "destination={}:{}",
-//                        new Object[] { srcPort, p,
-//                                dstAp.getNodeId(),
-//                                dstAp.getPortId()});
-//                log.info("Creating flow rules on the route, match rule: {}", m);
-//        	}
-//        }
-//        log.info("multipath end");
+       // List<Path> multipath = routingEngineService.getPathsFast(srcSw, 
+       //         dstAp.getNodeId(),k);
+       // log.info("multipath: size={}",multipath.size());
+       // for(Path p:multipath){
+       // 	if(!p.getPath().isEmpty()){
+       // 		log.info("pushRoute inPort={} route={} " +
+       //                 "destination={}:{}",
+       //                 new Object[] { srcPort, p,
+       //                         dstAp.getNodeId(),
+       //                         dstAp.getPortId()});
+       //         log.info("Creating flow rules on the route, match rule: {}", m);
+       // 	}
+       // }
+       // log.info("multipath end");
         //Match m = createMatchFromPacket(sw, srcPort, pi, cntx);
         
         if (! path.getPath().isEmpty()) {
@@ -569,7 +574,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         } /* else no path was found */
         }
         else{
-        try{
+        
         TCP tcp2 = null;
         Ethernet eth2 = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
         //log.info("protocol type:{}",eth2.getEtherType().toString());
@@ -584,155 +589,330 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 				TransportPort srctcpPort = tcp2.getSourcePort();
 				TransportPort destcpPort = tcp2.getDestinationPort();
 				String ports = srcIp2.toString()+"-"+String.valueOf(srctcpPort.getPort()) + "-"+dstIp2.toString() +  "-" + String.valueOf(destcpPort.getPort());
-				//log.info("582:{}",ports);
-				byte[] options;
-				options = tcp2.getOptions();
-				
-					if(options.length>=32){
-					int subtype = tcp2.getMptcpSubtype();
-					if(subtype==TCP.MP_CAPABLE)
-					{
-						primaryIps.put(srcIp2+"-"+dstIp2,0);
-						log.info("New mptcp sys on {}",srcIp2+"-"+dstIp2);
-						ArrayList<Path> v = new ArrayList<Path>();
-						if(pathCache.containsKey(srcIp2+"-"+dstIp2)){
-							v = pathCache.get(srcIp2+"-"+dstIp2);
-						}
-						else{
-								
-							v = (ArrayList<Path>) this.makeitetoe(srcSw, 
-                                                    srcPort,
-                                                    dstAp.getNodeId(),
-                                                    dstAp.getPortId(),
-                                                    k);
-							pathCache.put(srcIp2+"-"+dstIp2, v);
-						}
-                        U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
-                        U64 cookie = makeForwardingCookie(decision, flowSetId);
-                        pushRoute(v.get(0), m, pi, sw.getId(), cookie, 
-                                    cntx, requestFlowRemovedNotifn,
-                                OFFlowModCommand.ADD);      
-                        log.info("pushRoute inPort={} route={} " +
-                                "destination={}:{}",
-                                new Object[] { srcPort, v.get(0),
+				log.info("TCP package {}",ports);
+                if(!uniquepathcache.containsKey(ports)){
+				    byte[] options;
+                    short flag = tcp2.getFlags();
+                    //log.info("flag:{}",Integer.toHexString(flag & 0xffff));
+                    String possible_ports = dstIp2.toString() +  "-" + String.valueOf(destcpPort.getPort())+"-"+srcIp2.toString()+"-"+String.valueOf(srctcpPort.getPort());
+                    if((flag&(short)0x010)==(short)0x010)
+                    {
+                        log.info("ack packages: {} ACK:{}",ports,possible_ports);
+                        Path p = uniquepathcache.get(possible_ports);
+                        if(p!=null&&!p.getPath().isEmpty())
+                        {
+                            log.info("reverse path");
+                            List<NodePortTuple> nptlist =  p.getPath();
+                            Collections.reverse(nptlist);
+                            PathId id = new PathId(srcSw,dstAp.getNodeId());
+                            Path newPath =  new Path(id, nptlist);
+                            uniquepathcache.put(possible_ports,newPath); 
+                            log.info("Selected Route (MPJOIN) = " + newPath.toString());
+                            //log.info("Switch id:{},Port{}",sw.getId().toString(),v2.get(0).getPath().get(1).getPortId().toString());
+                            U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
+                            U64 cookie = makeForwardingCookie(decision, flowSetId);
+                            pushRoute(newPath, m, pi, sw.getId(), cookie, 
+                                cntx, requestFlowRemovedNotifn,
+                                OFFlowModCommand.ADD);
+                            for (NodePortTuple npt : newPath.getPath()) {
+                                        //log.info(npt.toString());
+                                        flowSetIdRegistry.registerFlowSetId(npt, flowSetId);
+                            }
+                        }
+
+                    }
+                    else{
+                    //if(!uniquepathcache.containsKey(possible_ports)){
+                        try{
+                        //if(!uniquepathcache.containsKey(possible_ports)){
+				        options = tcp2.getOptions();				
+				        if(options.length>=32){
+                            //log.info("options[23]:{}",Integer.toHexString(options[23]));
+                            int subtype = tcp2.getMptcpSubtype();
+					        if(subtype==TCP.MP_CAPABLE)
+        					{
+        						primaryIps.put(srcIp2+"-"+dstIp2,0);
+        						log.info("New mptcp sys on {}",srcIp2+"-"+dstIp2);
+        						ArrayList<Path> v = new ArrayList<Path>();
+                                OFFlowModCommand flowModCommand =  OFFlowModCommand.ADD;
+        						if(pathCache.containsKey(srcIp2+"-"+dstIp2)){
+        							v = pathCache.get(srcIp2+"-"+dstIp2);
+        						}
+        						else{
+        								
+        							v = (ArrayList<Path>) this.makeitetoe(srcSw, 
+                                                            srcPort,
+                                                            dstAp.getNodeId(),
+                                                            dstAp.getPortId(),
+                                                            k);
+        							pathCache.put(srcIp2+"-"+dstIp2, v);
+        						}
+
+                                for(Path p:v){
+
+                                    if(!p.getPath().isEmpty())
+                                    {
+                                         U64 flowSetId = flowidset.get(p.getPath().toString());
+                                         if(flowSetId == null)
+                                         {
+                                            flowSetId = flowSetIdRegistry.generateFlowSetId();
+                                            //flowModCommand = OFFlowModCommand.MODIFY;
+                                         }
+                                         U64 cookie = makeForwardingCookie(decision, flowSetId);
+
+                                         IOFSwitch  currentSwitch = switchService.getSwitch((p.getPath().get(1).getNodeId()));
+                                        OFPort currentPort = p.getPath().get(1).getPortId();         
+                                        IOFSwitch  nextSwitch = switchService.getSwitch((p.getPath().get(2).getNodeId()));
+                                        OFPort nextPort = p.getPath().get(2).getPortId();
+                                        DropMeter dm = new DropMeter();
+                                        dm.createMeter(currentSwitch, currentPort, nextSwitch, nextPort);
+                                        dm.bindMeterWithFlow(srcPort, destcpPort, srcIp2, currentSwitch, srctcpPort, p);
+
+
+                                        pushRoute(p, m, pi, sw.getId(), cookie, 
+                                                    cntx, requestFlowRemovedNotifn,
+                                                flowModCommand);      
+                                        log.info("pushRoute inPort={} route={} " +
+                                                "destination={}:{}",
+                                                new Object[] { srcPort, p ,
+                                                        dstAp.getNodeId(),
+                                                        dstAp.getPortId()});
+                                        //log.info("Switch id:{},Port{}",sw.getId().toString(),p.getPath().get(1).getPortId().toString());
+                                        for (NodePortTuple npt : p.getPath()) {
+                                                //log.info(npt.toString());
+                                                flowSetIdRegistry.registerFlowSetId(npt, flowSetId);
+                                        }
+                                        log.info("flowid {}",flowSetId.toString());
+                                        uniquepathcache.put(ports, p);
+                                        flowidset.put(p.getPath().toString(),flowSetId);
+                                        break;
+                                    }
+                                }
+
+        					}
+                            else if(subtype==TCP.MP_JOIN)
+        					{
+        						//for(byte [] key:flows.
+        						log.info("join op on exist ip pair {}",srcIp2+"-"+dstIp2);
+        						byte [] token = tcp2.getMPtcpToken();
+        						MptcpConnection c = flows.get(byteArray2Hex(token));
+                                Path newPath = null;
+        						if(c==null){
+        						log.info("new token ip pair:{}",byteArray2Hex(token));
+
+                                if(!uniquepathcache.containsKey(possible_ports)){
+        						MptcpConnection newconnection = new MptcpConnection(srcIp2,dstIp2,srctcpPort.getPort(),destcpPort.getPort(),token);
+        						flows.put(byteArray2Hex(token),newconnection );
+        						ArrayList<Path> v2  = new ArrayList<Path>();
+                                //OFFlowModCommand flowModCommand =  OFFlowModCommand.ADD;
+        						if(pathCache.containsKey(srcIp2+"-"+dstIp2)){
+        							v2 = pathCache.get(srcIp2+"-"+dstIp2);
+        						}
+        						else{
+        							v2 = (ArrayList<Path>) this.makeitetoe(srcSw, 
+                                                            srcPort,
+                                                            dstAp.getNodeId(),
+                                                            dstAp.getPortId(),
+                                                            k);
+        							pathCache.put(srcIp2+"-"+dstIp2, v2);
+        						}
+        						int subNum=0;
+        						if(primaryIps.containsKey(srcIp2+"-"+dstIp2)){
+        							subNum=1;
+        						}
+        						newconnection.addRoutes(srcIp2, dstIp2, v2, subNum);
+        						newPath = newconnection.getNextRoute(srcIp2, dstIp2);
+                                //uniquepathcache.put(ports,newPath);
+        						}
+                                 // else{
+                                 //    log.info("i think this is join ACK");
+                                 //    Path p = uniquepathcache.get(possible_ports);
+                                 //    List<NodePortTuple> nptlist =  p.getPath();
+                                 //    Collections.reverse(nptlist);
+                                 //    PathId id = new PathId(srcSw,dstAp.getNodeId());
+                                 //    newPath =  new Path(id, nptlist);
+                                 //    uniquepathcache.put(possible_ports,newPath);    
+                                
+                                 // }
+                                }
+        						else{
+        							log.info("Connection retrieved successfully,{}",byteArray2Hex(token));
+        							if(c.ipsAlreadySeen(srcIp2, dstIp2)){
+        								log.debug("Mptcpconnection:Seen this combination");
+        								newPath =  c.getNextRoute(srcIp2, dstIp2);
+        								//uniquepathcache.put(ports,newPath);
+        							}
+        							else{
+        								log.info("Not seen those ips");
+        								ArrayList<Path> v2  = new ArrayList<Path>();
+        								if(pathCache.containsKey(srcIp2+"-"+dstIp2)){
+        									v2 = pathCache.get(srcIp2+"-"+dstIp2);
+        								}
+        								else{
+        									v2 = (ArrayList<Path>) this.makeitetoe(srcSw, 
+                                                            srcPort,
+                                                            dstAp.getNodeId(),
+                                                            dstAp.getPortId(),
+                                                            k);
+        									pathCache.put(srcIp2+"-"+dstIp2, v2);
+        								}
+        								int subNum=0;
+        								if(primaryIps.containsKey(srcIp2+"-"+dstIp2)){
+        									subNum=1;
+        								}
+        								c.addRoutes(srcIp2, dstIp2, v2, subNum);
+        								Path path2 = c.getNextRoute(srcIp2, dstIp2);
+        								log.info("Selected Route (MPJOIN) = " + path2.toString());
+        								//log.info("Switch id:{},Port{}",sw.getId().toString(),v2.get(0).getPath().get(1).getPortId().toString());
+        								U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
+                                        U64 cookie = makeForwardingCookie(decision, flowSetId);
+        								pushRoute(path2, m, pi, sw.getId(), cookie, 
+        					                    cntx, requestFlowRemovedNotifn,
+        					                    OFFlowModCommand.ADD);
+                                        for (NodePortTuple npt : path2.getPath()) {
+                                                //log.info(npt.toString());
+                                                flowSetIdRegistry.registerFlowSetId(npt, flowSetId);
+                                        }
+                                        uniquepathcache.put(ports,path2);
+        							}
+        						}
+                                if(newPath!=null){
+                                        log.info("Selected Route (MPJOIN) = " + newPath.toString());
+                                        //log.info("Switch id:{},Port{}",sw.getId().toString(),v2.get(0).getPath().get(1).getPortId().toString());
+                                        U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
+                                        U64 cookie = makeForwardingCookie(decision, flowSetId);
+
+
+                                        IOFSwitch  currentSwitch = switchService.getSwitch((newPath.getPath().get(1).getNodeId()));
+                                        OFPort currentPort = newPath.getPath().get(1).getPortId();         
+                                        IOFSwitch  nextSwitch = switchService.getSwitch((newPath.getPath().get(2).getNodeId()));
+                                        OFPort nextPort = newPath.getPath().get(2).getPortId();
+                                        DropMeter dm = new DropMeter();
+                                        dm.createMeter(currentSwitch, currentPort, nextSwitch, nextPort);
+                                        dm.bindMeterWithFlow(srcPort, destcpPort, srcIp2, currentSwitch, srctcpPort, newPath);
+
+
+                                        pushRoute(newPath, m, pi, sw.getId(), cookie, 
+                                            cntx, requestFlowRemovedNotifn,
+                                            OFFlowModCommand.ADD);
+                                        for (NodePortTuple npt : newPath.getPath()) {
+                                                    //log.info(npt.toString());
+                                                    flowSetIdRegistry.registerFlowSetId(npt, flowSetId);
+                                        }
+                                        uniquepathcache.put(ports,newPath);
+                                }
+                                else{
+                                        log.info("warning!...empty path ");
+                                }
+        					}
+        					else{
+        						log.info("Not seen those types");
+        						U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
+        			            U64 cookie = makeForwardingCookie(decision, flowSetId);
+        			            Path path = routingEngineService.getPath(srcSw, 
+        			                    srcPort,
+        			                    dstAp.getNodeId(),
+        			                    dstAp.getPortId());
+        			            if (! path.getPath().isEmpty()) {
+        			                if (log.isDebugEnabled()) {
+        			                    log.debug("pushRoute inPort={} route={} " +
+        			                            "destination={}:{}",
+        			                            new Object[] { srcPort, path,
+        			                                    dstAp.getNodeId(),
+        			                                    dstAp.getPortId()});
+        			                    log.debug("Creating flow rules on the route, match rule: {}", m);
+        			                }
+        			                pushRoute(path, m, pi, sw.getId(), cookie, 
+        			                        cntx, requestFlowRemovedNotifn,
+        			                        OFFlowModCommand.ADD);	
+        			                /* 
+        			                 * Register this flowset with ingress and egress ports for link down
+        			                 * flow removal. This is done after we push the path as it is blocking.
+        			                 */
+        			                for (NodePortTuple npt : path.getPath()) {
+        			                	//log.info(npt.toString());
+        			                    flowSetIdRegistry.registerFlowSetId(npt, flowSetId);
+        			                }
+                                    uniquepathcache.put(ports,path);
+        			            } /* else no path was found */
+        					}   
+				        }
+                        else{
+                            log.info("normal TCP packets");
+                            U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
+                            U64 cookie = makeForwardingCookie(decision, flowSetId);
+                            Path path = routingEngineService.getPath(srcSw, 
+                                        srcPort,
                                         dstAp.getNodeId(),
-                                        dstAp.getPortId()});
-                        log.info("Switch id:{},Port{}",sw.getId().toString(),v.get(0).getPath().get(1).getPortId().toString());
-                        for (NodePortTuple npt : v.get(0).getPath()) {
+                                        dstAp.getPortId());
+                            if (! path.getPath().isEmpty()) {
+                                if (log.isDebugEnabled()) {
+                                    log.debug("pushRoute inPort={} route={} " +
+                                            "destination={}:{}",
+                                            new Object[] { srcPort, path,
+                                                    dstAp.getNodeId(),
+                                                    dstAp.getPortId()});
+                                    log.debug("Creating flow rules on the route, match rule: {}", m);
+                                }
+
+                            pushRoute(path, m, pi, sw.getId(), cookie, 
+                                    cntx, requestFlowRemovedNotifn,
+                                    OFFlowModCommand.ADD);  
+                            
+                            /* 
+                             * Register this flowset with ingress and egress ports for link down
+                             * flow removal. This is done after we push the path as it is blocking.
+                             */
+                            for (NodePortTuple npt : path.getPath()) {
                                 //log.info(npt.toString());
                                 flowSetIdRegistry.registerFlowSetId(npt, flowSetId);
-                        
+                            }
+                            }
+                            uniquepathcache.put(ports,path);
                         }
-					}
-					else if(subtype==TCP.MP_JOIN)
-					{
-						//for(byte [] key:flows.
-						log.info("join op on exist ip pair {}",srcIp2+"-"+dstIp2);
-						byte [] token = tcp2.getMPtcpToken();
-						MptcpConnection c = flows.get(byteArray2Hex(token));
-						if(c==null){
-						log.info("new token ip pair:{}",byteArray2Hex(token));
-						MptcpConnection newconnection = new MptcpConnection(srcIp2,dstIp2,srctcpPort.getPort(),destcpPort.getPort(),token);
-						flows.put(byteArray2Hex(token),newconnection );
-						ArrayList<Path> v2  = new ArrayList<Path>();
-						if(pathCache.containsKey(srcIp2+"-"+dstIp2)){
-							v2 = pathCache.get(srcIp2+"-"+dstIp2);
-						}
-						else{
-							v2 = (ArrayList<Path>) this.makeitetoe(srcSw, 
-                                                    srcPort,
-                                                    dstAp.getNodeId(),
-                                                    dstAp.getPortId(),
-                                                    k);
-							pathCache.put(srcIp2+"-"+dstIp2, v2);
-						}
-						int subNum=0;
-						if(primaryIps.containsKey(srcIp2+"-"+dstIp2)){
-							subNum=1;
-						}
-						newconnection.addRoutes(srcIp2, dstIp2, v2, subNum);
-						Path path2 = newconnection.getNextRoute(srcIp2, dstIp2);
-						log.info("Selected Route (MPJOIN) = " + path2.toString());
-						log.info("Switch id:{},Port{}",sw.getId().toString(),v2.get(0).getPath().get(1).getPortId().toString());
-						U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
-					    U64 cookie = makeForwardingCookie(decision, flowSetId);
-						pushRoute(path2, m, pi, sw.getId(), cookie, 
-			                    cntx, requestFlowRemovedNotifn,
-			                    OFFlowModCommand.ADD);
-						}
-						else{
-							log.info("Connection retrieved successfully,{}",byteArray2Hex(token));
-							if(c.ipsAlreadySeen(srcIp2, dstIp2)){
-								log.debug("Mptcpconnection:Seen this combination");
-								Path newPath =  c.getNextRoute(srcIp2, dstIp2);
-								U64 cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
-								pushRoute(newPath, m, pi, sw.getId(), cookie, 
-					                    cntx, requestFlowRemovedNotifn,
-					                    OFFlowModCommand.ADD);
-								
-							}
-							else{
-								log.info("Not seen those ips");
-								ArrayList<Path> v2  = new ArrayList<Path>();
-								if(pathCache.containsKey(srcIp2+"-"+dstIp2)){
-									v2 = pathCache.get(srcIp2+"-"+dstIp2);
-								}
-								else{
-									v2 = (ArrayList<Path>) this.makeitetoe(srcSw, 
-                                                    srcPort,
-                                                    dstAp.getNodeId(),
-                                                    dstAp.getPortId(),
-                                                    k);
-									pathCache.put(srcIp2+"-"+dstIp2, v2);
-								}
-								int subNum=0;
-								if(primaryIps.containsKey(srcIp2+"-"+dstIp2)){
-									subNum=1;
-								}
-								c.addRoutes(srcIp2, dstIp2, v2, subNum);
-								Path path2 = c.getNextRoute(srcIp2, dstIp2);
-								log.info("Selected Route (MPJOIN) = " + path2.toString());
-								log.info("Switch id:{},Port{}",sw.getId().toString(),v2.get(0).getPath().get(1).getPortId().toString());
-								U64 cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);//question
-								pushRoute(path2, m, pi, sw.getId(), cookie, 
-					                    cntx, requestFlowRemovedNotifn,
-					                    OFFlowModCommand.ADD);
-							}
-						}
-					}
-					else{
-						log.info("Not seen those types");
-						U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
-			            U64 cookie = makeForwardingCookie(decision, flowSetId);
-			            Path path = routingEngineService.getPath(srcSw, 
-			                    srcPort,
-			                    dstAp.getNodeId(),
-			                    dstAp.getPortId());
-			            if (! path.getPath().isEmpty()) {
-			                if (log.isDebugEnabled()) {
-			                    log.debug("pushRoute inPort={} route={} " +
-			                            "destination={}:{}",
-			                            new Object[] { srcPort, path,
-			                                    dstAp.getNodeId(),
-			                                    dstAp.getPortId()});
-			                    log.debug("Creating flow rules on the route, match rule: {}", m);
-			                }
+                        }catch (Exception e) {
+                        // TODO: handle exception
+                            log.error("{},{}",e.getClass().toString(),e.getMessage());
+                        }
+                        }
+                    }
+                else{
+                    Path p = uniquepathcache.get(ports);
+                    if(!p.getPath().isEmpty())
+                    {
+                    //log.info("hit uniquepathcache:{}",ports);
 
-			                pushRoute(path, m, pi, sw.getId(), cookie, 
-			                        cntx, requestFlowRemovedNotifn,
-			                        OFFlowModCommand.ADD);	
-			                
-			                /* 
-			                 * Register this flowset with ingress and egress ports for link down
-			                 * flow removal. This is done after we push the path as it is blocking.
-			                 */
-			                for (NodePortTuple npt : path.getPath()) {
-			                	//log.info(npt.toString());
-			                    flowSetIdRegistry.registerFlowSetId(npt, flowSetId);
-			                }
-			            } /* else no path was found */
-					}
-					}
+                    U64 flowSetId = flowidset.get(p.getPath().toString());
+                    //flowSetIdRegistry.generateFlowSetId();
+                    if(flowSetId==null)
+                    {
+                        flowSetId= flowSetIdRegistry.generateFlowSetId();
+                    }
+                    else{
+                    log.info("existing flow id: {}",flowSetId);
+                    }
+
+                    U64 cookie = makeForwardingCookie(decision, flowSetId);
+
+                    IOFSwitch  currentSwitch = switchService.getSwitch((p.getPath().get(1).getNodeId()));
+                    OFPort currentPort = p.getPath().get(1).getPortId();         
+                    IOFSwitch  nextSwitch = switchService.getSwitch((p.getPath().get(2).getNodeId()));
+                    OFPort nextPort = p.getPath().get(2).getPortId();
+                    DropMeter dm = new DropMeter();
+                    dm.createMeter(currentSwitch, currentPort, nextSwitch, nextPort);
+                    dm.bindMeterWithFlow(srcPort, destcpPort, srcIp2, currentSwitch, srctcpPort, p);
+
+                    pushRoute(uniquepathcache.get(ports), m, pi, sw.getId(), cookie,
+                        cntx, requestFlowRemovedNotifn,OFFlowModCommand.MODIFY);
+                    for (NodePortTuple npt : uniquepathcache.get(ports).getPath()) {
+                                //log.info(npt.toString());
+                                flowSetIdRegistry.registerFlowSetId(npt, flowSetId);
+                    }
+                    }
+                    else{
+                        log.info("line 817 :empty");
+                    }
+                }
         	}
         	else{
         		log.info("reach here? 1_2");
@@ -775,7 +955,15 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             Path path = routingEngineService.getPath(srcSw, 
                     srcPort,
                     dstAp.getNodeId(),
-                    dstAp.getPortId());
+                    dstAp.getPortId());;
+           // log.info("ARP multipath: size={}",multipath.size());
+           // for(Path p:multipath){
+           //  if(!p.getPath().isEmpty()){
+           //      log.info("route={} ",p);
+           //  }
+           // }
+           // log.info("ARP multipath end");
+
             if (! path.getPath().isEmpty()) {
                 if (log.isDebugEnabled()) {
                     log.debug("pushRoute inPort={} route={} " +
@@ -800,30 +988,50 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 }
             } /* else no path was found */
         }
-        }catch (Exception e) {
-			// TODO: handle exception
-        	log.error("{},{}",e.getClass().toString(),e.getMessage());
-		}
+
         }
     }
 
     
     protected List<Path> makeitetoe(DatapathId srcId, OFPort srcPort,
         DatapathId dstId, OFPort dstPort,int k ){
-        List<Path> r = routingEngineService.getPathsFast(srcId,dstId,k);
-        log.info("line 776: add head and tail");
+        List<Path> r = routingEngineService.getPathsSlow(srcId,dstId,k);
+        List<Path> ret = new ArrayList<Path>();
+        Set<NodePortTuple> visited = new HashSet<NodePortTuple>();
+        Collections.sort(r);
         for(Path p:r){
-//        	if (! srcId.equals(dstId) && p.getPath().isEmpty()){
-//                continue;
-//            }
             List<NodePortTuple> nptlist = new ArrayList<NodePortTuple>(p.getPath());
             NodePortTuple npt = new NodePortTuple(srcId,srcPort);
-            nptlist.add(0,npt);
-            npt = new NodePortTuple(dstId,dstPort);
-            nptlist.add(npt);
-            p.setPath(nptlist);
+            boolean valid = true;
+            for(NodePortTuple n:nptlist)
+            {
+                if(visited.contains(n))
+                {
+                    //log.info("invalid npt:{}",n.toString());
+                    valid = false;
+                    break;
+                }
+                visited.add(n);
+            }
+            if(valid)
+            {
+                nptlist.add(0,npt);
+                npt = new NodePortTuple(dstId,dstPort);
+                nptlist.add(npt);
+                p.setPath(nptlist);
+                ret.add(p);
+            }
         }
-        return r;
+
+        log.info("multipath: size={}",ret.size());
+        for(Path p:ret){
+        if(!p.getPath().isEmpty()){
+            log.info("route={} ",p.toString());
+            }
+        }
+        log.info("multipath end");
+
+        return ret;
     }
     
     /**
@@ -1052,12 +1260,17 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         		.expiration(5, TimeUnit.SECONDS)
         		.build();
 		this.pathCache =ExpiringMap.builder()
-        		.expiration(60, TimeUnit.MINUTES)
+        		.expiration(60, TimeUnit.SECONDS)
         		.build();
 		this.primaryIps=ExpiringMap.builder()
-        		.expiration(1200, TimeUnit.SECONDS)
+        		.expiration(60, TimeUnit.SECONDS)
         		.build();
-        
+        this.uniquepathcache = ExpiringMap.builder()
+                .expiration(60, TimeUnit.SECONDS)
+                .build();
+
+        this.flowidset = new HashMap<String,U64>();
+
         flowSetIdRegistry = FlowSetIdRegistry.getInstance();
 
         Map<String, String> configParameters = context.getConfigParams(this);

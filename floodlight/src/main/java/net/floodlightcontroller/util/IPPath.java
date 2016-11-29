@@ -12,21 +12,32 @@ public class IPPath {
 	IPv4Address destinationIP;
 	ArrayList<Path> availablePath;
 	int currentSubflowNumber;
+	boolean full ;
 	
 	public IPPath(IPv4Address source, IPv4Address destination, ArrayList<Path> v, int sub_num){
 		this.sourceIP = source;
 		this.destinationIP = destination;
 		this.availablePath = v;
 		this.currentSubflowNumber = sub_num;
+		this.full = false;
 	}
 	
 	public Path getNextPath(){
-		return availablePath.get(currentSubflowNumber);
+
+		Path p = availablePath.get(currentSubflowNumber);
+		//increaseCurrentSubflowNumber();
+		// while(p.getPath().isEmpty())
+		// {
+		// 	increaseCurrentSubflowNumber();
+		// 	p = availablePath.get(currentSubflowNumber);
+		// }
+		return (full)?null:p;
 	}
 	
 	public void increaseCurrentSubflowNumber(){
 		if(++(this.currentSubflowNumber)>=availablePath.size()){
 			this.currentSubflowNumber = 0 ; 
+			full = true;
 		}
 	}
 	

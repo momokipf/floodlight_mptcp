@@ -3,6 +3,7 @@ package net.floodlightcontroller.fdmcalculator;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -23,7 +24,7 @@ import net.floodlightcontroller.linkdiscovery.Link;
 import net.floodlightcontroller.topology.ITopologyListener;
 import net.floodlightcontroller.topology.ITopologyService;
 
-public class FDMCalculator implements IFDMCalculator, ITopologyListener, IFloodlightModule {
+public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, IFloodlightModule {
 
 	protected static final Logger log = LoggerFactory.getLogger(FDMCalculator.class);
 
@@ -34,16 +35,16 @@ public class FDMCalculator implements IFDMCalculator, ITopologyListener, IFloodl
 	
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-		// TODO Auto-generated method stub
-		log.info("getModuleServices");
-		return null;
+	    Collection<Class<? extends IFloodlightService>> l = new ArrayList<Class<? extends IFloodlightService>>();
+	    l.add(IFDMCalculatorService.class);
+	    return l;
 	}
-
+	 
 	@Override
 	public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
-		// TODO Auto-generated method stub
-		log.info("getServiceImpls");
-		return null;
+	    Map<Class<? extends IFloodlightService>, IFloodlightService> m = new HashMap<Class<? extends IFloodlightService>, IFloodlightService>();
+	    m.put(IFDMCalculatorService.class, this);
+	    return m;
 	}
 
 	@Override
@@ -82,40 +83,41 @@ public class FDMCalculator implements IFDMCalculator, ITopologyListener, IFloodl
 		buildTopology();
 	}
 
-	@Override
-	public void addFlow(DatapathId srcNodeID, DatapathId desNodeID,
-			double requestBW) {
-		// TODO Auto-generated method stub
-		// req.add
-		calculateFDM();
-	}
-
-	@Override
-	public void removeFlow(DatapathId srcNodeID, DatapathId desNodeID) {
-		// TODO Auto-generated method stub
-		// req.remove
-		calculateFDM();
-	}
-
-	@Override
-	public double getFlowBW(DatapathId srcNodeID, DatapathId desNodeID) {
-		// TODO Auto-generated method stub
-		// Go through End1 and End2, find match, find match in Gflow
-		return 0.0;
-	}
+//	@Override
+//	public void addFlow(DatapathId srcNodeID, DatapathId desNodeID,
+//			double requestBW) {
+//		// TODO Auto-generated method stub
+//		// req.add
+//		calculateFDM();
+//	}
+//
+//	@Override
+//	public void removeFlow(DatapathId srcNodeID, DatapathId desNodeID) {
+//		// TODO Auto-generated method stub
+//		// req.remove
+//		calculateFDM();
+//	}
+//
+//	@Override
+//	public double getFlowBW(DatapathId srcNodeID, DatapathId desNodeID) {
+//		// TODO Auto-generated method stub
+//		// Go through End1 and End2, find match, find match in Gflow
+//		return 0.0;
+//	}
 	
 	@Override
-	public float getFlowBW(Link link) {
+	public Float getFlowBW(Link link) {
 		// TODO Auto-generated method stub
 		return globalLinkFlows.get(link);
 	}
 	
-	public float getFlowBW(IOFSwitch currentSwitch, OFPort currentPort,IOFSwitch nextSwitch, OFPort nextPort) {
+	public Float getFlowBW(IOFSwitch currentSwitch, OFPort currentPort,IOFSwitch nextSwitch, OFPort nextPort) {
 		U64 latency = U64.of(0L);
 		
 		// Build a link to send in
 		Link link = new Link(currentSwitch.getId(), currentPort, nextSwitch.getId(), nextPort, latency);
-		
+		log.info("********************This is the rate info***********");
+		log.info( String.valueOf(globalLinkFlows.get(link)));
 		return globalLinkFlows.get(link);
 	}
 
@@ -153,10 +155,10 @@ public class FDMCalculator implements IFDMCalculator, ITopologyListener, IFloodl
 				Float.MAX_VALUE, Float.MAX_VALUE, Float.MAX_VALUE, 
 				Float.MAX_VALUE, Float.MAX_VALUE, Float.MAX_VALUE,
 				Float.MAX_VALUE, Float.MAX_VALUE, Float.MAX_VALUE};
-		if(a_cap.length != top.getNoLinks()) {
-			log.info("Capacity Incorrectly Initialized");
-			System.exit(0);
-		}
+		// if(a_cap.length != top.getNoLinks()) {
+		// 	log.info("Capacity Incorrectly Initialized");
+		// 	System.exit(0);
+		// }
 		top.initCapacity(a_cap);
 		Float[][] a_req = { 
 				{0f, 0f, 0f, 0f, 0f, 0f, 0f },

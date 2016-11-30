@@ -666,9 +666,14 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                                         IOFSwitch  nextSwitch = switchService.getSwitch((p.getPath().get(2).getNodeId()));
                                         OFPort nextPort = p.getPath().get(2).getPortId();
                                         //DropMeter dm = new DropMeter();
+                                        if(currentSwitch!=null&&currentSwitch!=null&&nextSwitch!=null&&nextPort!=null&&dm!=null)
+                                        {
                                         dm.createMeter(currentSwitch, currentPort, nextSwitch, nextPort);
                                         dm.bindMeterWithFlow(srcPort, destcpPort, srcIp2, currentSwitch, srctcpPort, p);
-
+                                        }
+                                        else{
+                                            log.info("something here is null");
+                                        }
 
                                         pushRoute(p, m, pi, sw.getId(), cookie, 
                                                     cntx, requestFlowRemovedNotifn,
@@ -1256,7 +1261,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         this.switchService = context.getServiceImpl(IOFSwitchService.class);
         this.linkService = context.getServiceImpl(ILinkDiscoveryService.class);
 
-        dm = new DropMeter();
+        dm = new DropMeter(context);
         //this.map = new HashMap<String,Path>();
         this.flows = ExpiringMap.builder()
         		.expiration(5, TimeUnit.SECONDS)

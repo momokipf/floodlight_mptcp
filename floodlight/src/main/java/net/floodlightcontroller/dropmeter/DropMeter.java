@@ -39,6 +39,7 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 
 import org.projectfloodlight.openflow.types.TransportPort;
 import net.floodlightcontroller.fdmcalculator.FDMCalculator; 
+import net.floodlightcontroller.fdmcalculator.IFDMCalculatorService; 
 
 
 
@@ -47,8 +48,8 @@ import org.slf4j.LoggerFactory;
 
 public class DropMeter{
 
-		public DropMeter(){
-			this.fdmservice = new FDMCalculator();
+		public DropMeter(FloodlightModuleContext context){
+			fdmservice = context.getServiceImpl(IFDMCalculatorService.class);
 		}
 
 	    public void createMeter(IOFSwitch currentSwitch, OFPort currentPort,IOFSwitch nextSwitch, OFPort nextPort ) {
@@ -115,5 +116,5 @@ public class DropMeter{
 	    }
 	    
 	    protected static int meterid = 1; 
-	    protected FDMCalculator fdmservice;
+	    protected IFDMCalculatorService fdmservice;
 }

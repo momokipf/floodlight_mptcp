@@ -162,7 +162,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
     public final boolean randomForwarding=false;
 
-    public final int k = 8 ;
+    public final int k = 5 ;
 
 
     
@@ -666,14 +666,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                                         IOFSwitch  nextSwitch = switchService.getSwitch((p.getPath().get(2).getNodeId()));
                                         OFPort nextPort = p.getPath().get(2).getPortId();
                                         //DropMeter dm = new DropMeter();
-                                        if(currentSwitch!=null&&currentSwitch!=null&&nextSwitch!=null&&nextPort!=null&&dm!=null)
-                                        {
-                                        dm.createMeter(currentSwitch, currentPort, nextSwitch, nextPort);
-                                        dm.bindMeterWithFlow(srcPort, destcpPort, srcIp2, currentSwitch, srctcpPort, p);
-                                        }
-                                        else{
-                                            log.info("something here is null");
-                                        }
+                                         log.info("rate:{}",dm.createMeter(currentSwitch, currentPort, nextSwitch, nextPort));
+                                         dm.bindMeterWithFlow(srcPort, destcpPort, srcIp2, currentSwitch, srctcpPort, p);
 
                                         pushRoute(p, m, pi, sw.getId(), cookie, 
                                                     cntx, requestFlowRemovedNotifn,
@@ -794,7 +788,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                                         IOFSwitch  nextSwitch = switchService.getSwitch((newPath.getPath().get(2).getNodeId()));
                                         OFPort nextPort = newPath.getPath().get(2).getPortId();
                                         //DropMeter dm = new DropMeter();
-                                        dm.createMeter(currentSwitch, currentPort, nextSwitch, nextPort);
+                                        log.info("rate:{}",dm.createMeter(currentSwitch, currentPort, nextSwitch, nextPort));
                                         dm.bindMeterWithFlow(srcPort, destcpPort, srcIp2, currentSwitch, srctcpPort, newPath);
 
 
@@ -905,7 +899,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                     IOFSwitch  nextSwitch = switchService.getSwitch((p.getPath().get(2).getNodeId()));
                     OFPort nextPort = p.getPath().get(2).getPortId();
                     //DropMeter dm = new DropMeter();
-                    dm.createMeter(currentSwitch, currentPort, nextSwitch, nextPort);
+                    log.info("rate:{}",dm.createMeter(currentSwitch, currentPort, nextSwitch, nextPort));
                     dm.bindMeterWithFlow(srcPort, destcpPort, srcIp2, currentSwitch, srctcpPort, p);
 
                     pushRoute(uniquepathcache.get(ports), m, pi, sw.getId(), cookie,
@@ -1005,6 +999,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         List<Path> ret = new ArrayList<Path>();
         Set<NodePortTuple> visited = new HashSet<NodePortTuple>();
         Collections.sort(r);
+        log.info("raw multipath: size={}",r.size());
         for(Path p:r){
             List<NodePortTuple> nptlist = new ArrayList<NodePortTuple>(p.getPath());
             NodePortTuple npt = new NodePortTuple(srcId,srcPort);

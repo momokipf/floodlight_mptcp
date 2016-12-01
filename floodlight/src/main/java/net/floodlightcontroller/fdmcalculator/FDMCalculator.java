@@ -116,8 +116,8 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 		
 		// Build a link to send in
 		Link link = new Link(currentSwitch.getId(), currentPort, nextSwitch.getId(), nextPort, latency);
-		log.info("********************This is the rate info***********");
-		log.info( String.valueOf(globalLinkFlows.get(link)));
+		 log.info("********************This is the rate info:{}***********",String.valueOf(globalLinkFlows.get(link)));
+		 //log.info( String.valueOf(globalLinkFlows.get(link)));
 		return globalLinkFlows.get(link);
 	}
 
@@ -165,9 +165,9 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 				{0f, 0f, 0f, 0f, 0f, 0f, 0f },
 				{0f, 0f, 0f, 0f, 0f, 0f, 0f },
 				{0f, 0f, 0f, 0f, 0f, 0f, 0f },
-				{5f, 0f, 0f, 0f, 0f, 0f, 0f },
-				{6f, 0f, 0f, 0f, 0f, 0f, 0f },
-				{1f, 0f, 0f, 0f, 0f, 0f, 0f } };
+				{5.0f, 0f, 0f, 0f, 0f, 0f, 0f },
+				{6.0f, 0f, 0f, 0f, 0f, 0f, 0f },
+				{1.0f, 0f, 0f, 0f, 0f, 0f, 0f } };
 		log.info("All Req: " + Arrays.deepToString(a_req));
 		top.initRequirements(a_req);
 		

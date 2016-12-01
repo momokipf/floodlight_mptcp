@@ -52,18 +52,19 @@ public class DropMeter{
 			fdmservice = context.getServiceImpl(IFDMCalculatorService.class);
 		}
 
-	    public void createMeter(IOFSwitch currentSwitch, OFPort currentPort,IOFSwitch nextSwitch, OFPort nextPort ) {
+	    public int createMeter(IOFSwitch currentSwitch, OFPort currentPort,IOFSwitch nextSwitch, OFPort nextPort ) {
 	    	 OFFactory meterFactory = OFFactories.getFactory(OFVersion.OF_13);
 	            OFMeterMod.Builder meterModBuilder = meterFactory.buildMeterMod()
 	                .setMeterId(meterid).setCommand(OFMeterModCommand.ADD);
 
 
 	            /*Please change the rate here. The switch&port needed are passed as parameter to this function. */
-	            // int rate  = 1000; 
+	            //int rate  = 1000; 
 	            int rate = (int)(fdmservice.getFlowBW(currentSwitch, currentPort, nextSwitch, nextPort)*1000);
 	            //rate = (int)rate*1000;
 	            /*End of getRate()*/
-	            
+	            //int rate = 10000;
+
 	            OFMeterBandDrop.Builder bandBuilder = meterFactory.meterBands().buildDrop()
 	                .setRate(rate);
 	            OFMeterBand band = bandBuilder.build();
@@ -76,6 +77,7 @@ public class DropMeter{
 	                .setFlags(flags2).build();
 
 	            currentSwitch.write(meterModBuilder.build());
+	            return rate;
 	     }
 	    
 	    public void bindMeterWithFlow(OFPort inPort, TransportPort dstPort, IPv4Address srcIp, IOFSwitch sw, TransportPort srcPort, Path path) {

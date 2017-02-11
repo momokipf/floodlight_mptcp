@@ -21,6 +21,7 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LDUpdate;
 import net.floodlightcontroller.linkdiscovery.Link;
+import net.floodlightcontroller.topology.ITopologyManagerBackend;
 import net.floodlightcontroller.topology.ITopologyListener;
 import net.floodlightcontroller.topology.ITopologyService;
 
@@ -31,6 +32,8 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 	// Protected variables we'll be using
 	protected ITopologyService topologyService;		// Topology service that we'll be calling
 
+	protected static ITopologyManagerBackend tm;
+	
 	private Map<Link, Float> globalLinkFlows;
 	
 	@Override
@@ -65,6 +68,7 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 		// Initialize our dependencies
 		topologyService = context.getServiceImpl(ITopologyService.class);
 		topologyService.addListener(FDMCalculator.this);
+		tm = (ITopologyManagerBackend)context.getServiceImpl(ITopologyService.class);
 		log.info("init");
 
 	}

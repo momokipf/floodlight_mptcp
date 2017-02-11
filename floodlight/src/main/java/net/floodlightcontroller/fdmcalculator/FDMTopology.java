@@ -53,8 +53,8 @@ class FDMTopology {
 //		mm_req = new Float[noNodes][noNodes];
 		
 		capacity = new Float[getNoLinks()];
-		System.out.println("Adj ");
-		System.out.println(nodeAdjLinks.toString());
+		//System.out.println("Adj ");
+		//System.out.println(nodeAdjLinks.toString());
 	}
 	
 	public Integer getNoLinks() {
@@ -86,7 +86,7 @@ class FDMTopology {
 	}
 	
 	public void initCapacity(Float[] a_cap) {
-		System.arraycopy(a_cap, 0, capacity, 0, capacity.length);
+		//System.arraycopy(a_cap, 0, capacity, 0, capacity.length);
 	}
 
 	public Float[][] getReq() {

@@ -32,8 +32,12 @@ public class Link implements Comparable<Link> {
     private DatapathId dst;
     @JsonProperty("dst-port")
     private OFPort dstPort;
-    @JsonProperty("latency") 
+    @JsonProperty("latency")
     private U64 latency; /* we intentionally exclude the latency from hashcode and equals */
+    
+    @JsonProperty("capacity")  /* aimed to add virtual bandwidth limit on on link */
+    private Float capacity;
+    
 
     public Link(DatapathId srcId, OFPort srcPort, DatapathId dstId, OFPort dstPort, U64 latency) {
         this.src = srcId;
@@ -41,6 +45,7 @@ public class Link implements Comparable<Link> {
         this.dst = dstId;
         this.dstPort = dstPort;
         this.latency = latency;
+        this.capacity = Float.MAX_VALUE;
     }
 
     /*
@@ -71,6 +76,10 @@ public class Link implements Comparable<Link> {
     	return latency;
     }
 
+    public Float getCapacity(){
+    	return capacity;
+    }
+    
     public void setSrc(DatapathId src) {
         this.src = src;
     }
@@ -91,6 +100,10 @@ public class Link implements Comparable<Link> {
     	this.latency = latency;
     }
 
+    public void setCapacity(Float capacity){
+    	this.capacity = capacity;
+    }
+    
     @Override
     public int hashCode() {
         final int prime = 31;
@@ -133,6 +146,8 @@ public class Link implements Comparable<Link> {
                 + dstPort.toString()
                 + ", latency="
                 + String.valueOf(latency.getValue())
+                + ", Capacity="
+                + ((capacity==Float.MAX_VALUE)?"INF":Float.toString(capacity))
                 + "]";
     }
     

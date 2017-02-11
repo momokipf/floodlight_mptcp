@@ -47,6 +47,7 @@ public class LinkWithType extends JsonSerializer<LinkWithType> {
     public LinkDirection direction;
     public U64 latency;
 
+    public Float capcity;
     // Do NOT delete this, it's required for the serializer
     public LinkWithType() {}
 
@@ -60,6 +61,7 @@ public class LinkWithType extends JsonSerializer<LinkWithType> {
         this.type = type;
         this.direction = direction;
         this.latency = link.getLatency();
+        this.capcity = link.getCapacity();
     }
 
     @Override
@@ -74,6 +76,7 @@ public class LinkWithType extends JsonSerializer<LinkWithType> {
         jgen.writeStringField("type", lwt.type.toString());
         jgen.writeStringField("direction", lwt.direction.toString());
         jgen.writeNumberField("latency", lwt.latency.getValue()); // Might be an issue if value exceed what unsigned long can hold
+        jgen.writeNumberField("capacity", lwt.capcity);
         jgen.writeEndObject();
     }
 

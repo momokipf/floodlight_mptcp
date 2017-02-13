@@ -99,7 +99,7 @@ public class LinksResource extends ServerResource {
     }
     
     
-    @Post
+    @Post("json")
     public Set<LinkWithType> storeLink(String json){
     	ILinkDiscoveryService ld = (ILinkDiscoveryService)getContext().getAttributes().
                 get(ILinkDiscoveryService.class.getCanonicalName());

@@ -80,6 +80,7 @@ def lookupPath(cmd):
             path = '/wm/topology/links/json'
         elif numargs == 1:
             path = '/wm/topology/'+args.otherargs[0]+'/json'
+
     elif args.cmd == 'port' and numargs == 1:
         if args.otherargs[0] == "blocked":
             path = '/wm/topology/blockedports/json'
@@ -100,16 +101,25 @@ def lookupPath(cmd):
 parser = argparse.ArgumentParser(description='process args', usage=usage_desc, epilog='foo bar help')
 parser.add_argument('--ip', default='localhost')
 parser.add_argument('--port', default=8080)
+parser.add_argument('--method',default='get')
+parser.add_argument('--data')
 parser.add_argument('cmd')
 parser.add_argument('otherargs', nargs='*')
 args = parser.parse_args()
 
-#print args
+print args
 
 rest = RestApi(args.ip, args.port)
 path = lookupPath(args.cmd)
 
-out = rest.get(path)
+
+if args.method=='get':
+    out = rest.get(path)
+elif args.method=='post':
+    if args.data=='':
+        print 'there is no json data '
+    else:
+        out = rest.set(path,data)
 print json.dumps(out,sort_keys=True, indent=4)
 print "Number of items: " + str(len(out))
 

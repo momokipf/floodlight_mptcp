@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -19,11 +20,14 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LDUpdate;
 import net.floodlightcontroller.linkdiscovery.Link;
+import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.topology.ITopologyManagerBackend;
 import net.floodlightcontroller.topology.ITopologyListener;
 import net.floodlightcontroller.topology.ITopologyService;
+import net.floodlightcontroller.topology.TopologyInstance;
 
 public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, IFloodlightModule {
 
@@ -34,7 +38,12 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 
 	protected static ITopologyManagerBackend tm;
 	
+	private Map<String,Set<Path>> currentuser;
+	
+	protected FDMTopology currentInstance;
+	
 	private Map<Link, Float> globalLinkFlows;
+	
 	
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getModuleServices() {
@@ -67,8 +76,8 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 			throws FloodlightModuleException {
 		// Initialize our dependencies
 		topologyService = context.getServiceImpl(ITopologyService.class);
-		topologyService.addListener(FDMCalculator.this);
-		tm = (ITopologyManagerBackend)context.getServiceImpl(ITopologyService.class);
+		//topologyService.addListener(FDMCalculator.this);
+		//tm = (ITopologyManagerBackend)context.getServiceImpl(ITopologyService.class);
 		log.info("init");
 
 	}
@@ -137,51 +146,38 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 	/**
 	 * Build the topology in our implementation
 	 * This is needed as TopologyService keeps its topology in a very different way
+	 * (1) static way
+	 * (2) dynamic way
+	 * 
 	 */
 	private void buildTopology() {
 		// Variables we need
-		Map<DatapathId, Set<Link>> linkMap;
-		
-		linkMap = topologyService.getAllLinks();
-		log.info("No. of Nodes: " + linkMap.size());
-		log.info("Complete Topology: " + linkMap.toString());
-
-		FDMTopology top = new FDMTopology(1, linkMap);
-		log.info("All Links: " + top.allLinks);
-		log.info("All Nodes: " + top.nodes);
-		log.info("No. of Links: " + top.getNoLinks());
-		Float[] a_cap = {
-				5.0f, 6.0f, 7.0f, 
-				Float.MAX_VALUE, Float.MAX_VALUE, Float.MAX_VALUE, 
-				Float.MAX_VALUE, Float.MAX_VALUE, Float.MAX_VALUE, 
-				Float.MAX_VALUE, Float.MAX_VALUE, Float.MAX_VALUE, 
-				Float.MAX_VALUE, Float.MAX_VALUE, Float.MAX_VALUE, 
-				Float.MAX_VALUE, Float.MAX_VALUE, Float.MAX_VALUE, 
-				Float.MAX_VALUE, Float.MAX_VALUE, Float.MAX_VALUE,
-				Float.MAX_VALUE, Float.MAX_VALUE, Float.MAX_VALUE};
-		// if(a_cap.length != top.getNoLinks()) {
-		// 	log.info("Capacity Incorrectly Initialized");
-		// 	System.exit(0);
-		// }
-		top.initCapacity(a_cap);
-		Float[][] a_req = { 
-				{0f, 0f, 0f, 0f, 0f, 0f, 0f },
-				{0f, 0f, 0f, 0f, 0f, 0f, 0f },
-				{0f, 0f, 0f, 0f, 0f, 0f, 0f },
-				{0f, 0f, 0f, 0f, 0f, 0f, 0f },
-				{5.0f, 0f, 0f, 0f, 0f, 0f, 0f },
-				{6.0f, 0f, 0f, 0f, 0f, 0f, 0f },
-				{1.0f, 0f, 0f, 0f, 0f, 0f, 0f } };
-		log.info("All Req: " + Arrays.deepToString(a_req));
-		top.initRequirements(a_req);
-		
-		float delta = 0.002f;
-		float epsilon = 0.00001f;
-		FlowDeviationMethod fdm = new FlowDeviationMethod(delta, epsilon);
-		globalLinkFlows = fdm.runFDM(top);
-		
-		log.info("Global Flows: " + globalLinkFlows);
-		
+		//Map<DatapathId, Set<Link>> linkMap = tm.getCurrentTopologyInstance(
+		//Set<DatapathId> switches = tm.getCurrentTopologyInstance().getSwitches();
 	}
 
+	
+	private Map<DatapathId, Set<CustomizedLink>> buildstatictopo() {
+		Map<DatapathId,Set<CustomizedLink>> cusdpidLinks = new HashMap<DatapathId, Set<CustomizedLink>>();
+		Map<DatapathId,Set<Link>> dpidLinks = this.topologyService.getAllLinks();
+		for(DatapathId pathid:dpidLinks.keySet()){
+			for(Link l:dpidLinks.get(pathid)){
+				if(dpidLinks.containsKey(pathid)) {
+                    dpidLinks.get(pathid).add(new CustomizedLink(l,Float.MAX_VALUE,2.0f));
+                }
+                else {
+                    dpidLinks.put(pathid,new HashSet<Link>(Arrays.asList(new CustomizedLink(l,Float.MAX_VALUE,2.0f))));
+                }
+			}
+		}
+		
+		return cusdpidLinks;
+	}
+	
+	
+	
+	
+	
+	
+	
 }

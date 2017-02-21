@@ -46,8 +46,8 @@ public class LinkWithType extends JsonSerializer<LinkWithType> {
     public LinkType type;
     public LinkDirection direction;
     public U64 latency;
-
     public Float capcity;
+    
     // Do NOT delete this, it's required for the serializer
     public LinkWithType() {}
 

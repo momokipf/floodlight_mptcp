@@ -1,31 +1,56 @@
 package net.floodlightcontroller.fdmcalculator;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Stack;
 
+import org.projectfloodlight.openflow.types.DatapathId;
+
 import net.floodlightcontroller.linkdiscovery.Link;
+import net.floodlightcontroller.routing.Path;
+import net.floodlightcontroller.routing.PathId;
+
 
 class FlowDeviationMethod {
 	
-	public FlowDeviationMethod(float delta, float epsilon) {
-		EPSILON = epsilon;
-		DELTA = delta;
-	}
+	/*
+	 * this.EPSILON = 0.00001f;
+	 * this.DELTA = 0.002f;
+	 */
 	
-	Float EPSILON;
-	Float DELTA;
+	private static Float EPSILON =  0.00001f;
+	private static Float DELTA = 0.002f;
+	
+//	private List<CustomizedLink> allFlows;
+//	List<LinkedList<CustomizedLink>> pathset;
+	
+	private FDMTopology FDMtopoinstance;
+	
+	private HashMap<PathId,LinkedList<Integer>> shortestPath;
+	
+	private Float[] NewCap;
+	private Float[] globalFlow;  //included in customizedlink 
+	private Float[] EFlow; 		 //included in customizedlink 
+	//private Float[] FDlen;
+	
+	
+	public FlowDeviationMethod(FDMTopology FDMtopoinstance) {
+		this.FDMtopoinstance = FDMtopoinstance;
+		NewCap = new Float[FDMtopoinstance.getNoLinks()];
+		globalFlow = new Float[FDMtopoinstance.getNoLinks()];
+		EFlow = new Float[FDMtopoinstance.getNoLinks()];
+	}
 
-	Float[] globalFlow;
-	Float[] EFlow;
-	// Float[] Pflow;
 
-	Float[][] shortestPathDistance;
-	Integer[][] shortestPathPredecessor;
+//	Float[][] shortestPathDistance;
+//	Integer[][] shortestPathPredecessor;
 
-	Float[] FDlen;
-	Float[] NewCap;
+//	Float[] FDlen;
+	
 	// Float[] Cost;
 
 	Float Aresult;
@@ -34,60 +59,60 @@ class FlowDeviationMethod {
 	Float CurrentDelay = 0.0f;
 	Float PreviousDelay = 0.0f;
 	
-	private Map<Link, Float> getGlobalFlows(FDMTopology network) {
-		Map<Link, Float> globalFlows = (Map<Link, Float>) new HashMap<Link, Float>();
-		for(int i = 0; i < network.getNoLinks(); i++) {
-			globalFlows.put(network.allLinks.get(i), globalFlow[i]);
-		}
-		return globalFlows;
-	}
+	
+	
+	
+	
+//	private Map<Link, Float> getGlobalFlows(FDMTopology network) {
+//		Map<Link, Float> globalFlows = (Map<Link, Float>) new HashMap<Link, Float>();
+//		for(int i = 0; i < network.getNoLinks(); i++) {
+//			globalFlows.put(network.allLinks.get(i), globalFlow[i]);
+//		}
+//		return globalFlows;
+//	}
 
-	Map<Link, Float> runFDM(FDMTopology network) {
+	public void runFDM(FDMTopology network) {
 		
-		//Initialization Code
-		
-		EFlow = new Float[network.getNoLinks()]; // Current Extremal in Book
-		globalFlow = new Float[network.getNoLinks()]; //GFlow in Book
-
-//		PFlow = new Float[network.getNoNodes()];
-		
-		shortestPathDistance = new Float[network.getNoNodes()][network.getNoNodes()];
-		shortestPathPredecessor = new Integer[network.getNoNodes()][network.getNoNodes()];
-		
-		FDlen = new Float[network.getNoLinks()];
-		NewCap = new Float[network.getNoLinks()];
-//		Cost = new Float[network.getNoLinks()];
-		for(Integer i = 0; i < network.getNoLinks(); i++) {
-			FDlen[i] = Float.POSITIVE_INFINITY;
-			NewCap[i] = 0.0f;
-			globalFlow[i] = 0.0f;
-			EFlow[i] = 0.0f;
-//			Cost[i] = 0;
-		}
+//		//Initialization Code
+//		
+//		EFlow = new Float[network.getNoLinks()]; // Current Extremal in Book
+//		globalFlow = new Float[network.getNoLinks()]; //GFlow in Book
+//
+// //		PFlow = new Float[network.getNoNodes()];
+//		
+//		FDlen = new Float[network.getNoLinks()];
+//		NewCap = new Float[network.getNoLinks()];
+//  //		Cost = new Float[network.getNoLinks()];
+//		for(Integer i = 0; i < network.getNoLinks(); i++) {
+//			FDlen[i] = Float.POSITIVE_INFINITY;
+//			NewCap[i] = 0.0f;
+//			globalFlow[i] = 0.0f;
+//			EFlow[i] = 0.0f;
+//  //			Cost[i] = 0;
+//		}
 		
 		Float PreviousDelay = Float.POSITIVE_INFINITY;
 //		Integer i, n;
-		Boolean prInteger = true;
+		boolean prInteger = true;
 //		Integer prInteger = 1;
-
+		boolean feasible = true;
 		
-		
-		SetLinkLens(globalFlow, network.getCapacity(), network.getMsgLen(), FDlen);
-		SetSP(network, FDlen, network.getAdj(), shortestPathDistance, shortestPathPredecessor);
-		LoadLinks(network.getReq(), shortestPathPredecessor, network, globalFlow);
-		Aresult = AdjustCaps(globalFlow, network.getCapacity(), NewCap);
+		SetLinkLens(globalFlow,FDMtopoinstance.getMsgLen());
+		SetSP();
+		LoadLinks(globalFlow);
+		Aresult = AdjustCaps(globalFlow,NewCap);
 		if (Aresult == 1)
 			Aflag = false;
 		else
 			Aflag = true;
-		CurrentDelay = CalcDelay(globalFlow, NewCap, network.getMsgLen(), network.getTotal_requirement());
+		CurrentDelay = CalcDelay(globalFlow, NewCap,FDMtopoinstance.getMsgLen(), FDMtopoinstance.getTotal_requirement());
 
 		Integer count = 0;
 		//start to run FDM
 		while(Aflag || (CurrentDelay < PreviousDelay*(1-EPSILON))) {
-			SetLinkLens(globalFlow, network.getCapacity(), network.getMsgLen(), FDlen);
-			SetSP(network, FDlen, network.getAdj(), shortestPathDistance, shortestPathPredecessor);
-			LoadLinks(network.getReq(), shortestPathPredecessor, network, EFlow);
+			SetLinkLens(globalFlow,network.getMsgLen());
+			SetSP();
+			LoadLinks(EFlow);
 			//previous delay based on current NewCap
 			PreviousDelay = CalcDelay(globalFlow, NewCap, network.getMsgLen(), network.getTotal_requirement());
 			Superpose(EFlow, globalFlow, NewCap, network.getTotal_requirement(), network.getMsgLen());
@@ -95,144 +120,87 @@ class FlowDeviationMethod {
 			CurrentDelay = CalcDelay(globalFlow, NewCap, network.getMsgLen(), network.getTotal_requirement());
 			
 			if(Aflag) {
-				Aresult = AdjustCaps(globalFlow, network.getCapacity(), NewCap);
-				if (Aresult == 1)
-					Aflag = false;
-				else
-					Aflag = true;
+				Aresult = AdjustCaps(globalFlow, NewCap);
+				Aflag = (Aresult==1)?false:true;
 			}
+			
+			if(Aflag && (CurrentDelay>=PreviousDelay*(1-EPSILON))){
+				feasible = false;
+				break;
+			}
+		}
+		
+		if(feasible){
+			for(Float i:globalFlow){
+				System.out.print(i +' ');
+			}
+			//return globalFlow;
+		}
+		else{
 //			PreviousDelay = network.getCurrentDelay();
 //			network.setCurrentDelay(CalcDelay(network.getGflow(), NewCap, network.getMsgLen(), network.getTotal_requirement()));
 			//judge whether the problem is feasible 
-			Float max_FD_len = 0f, min_FD_len = Float.POSITIVE_INFINITY;
-			for (Integer i = 0; i < network.getNoLinks(); i++) {
-				if (FDlen[i] > 0) {
-					max_FD_len = Math.max(max_FD_len, FDlen[i]);
-					min_FD_len = Math.min(min_FD_len, FDlen[i]);
+//			Float max_FD_len = 0f, min_FD_len = Float.POSITIVE_INFINITY;
+//			for (Integer i = 0; i < network.getNoLinks(); i++) {
+//				if (FDlen[i] > 0) {
+//					max_FD_len = Math.max(max_FD_len, FDlen[i]);
+//					min_FD_len = Math.min(min_FD_len, FDlen[i]);
+//				}
+//			}
+//			if(Aflag == true && CurrentDelay >= PreviousDelay*(1-EPSILON)) {
+//			//if ((Aflag == true && (max_FD_len - min_FD_len)<EPSILON)||count==100) {
+//				System.out.print("The problem is infeasible. Now reduce the request.\n");
+//				prInteger = false;
+//				break;
+//			}
+//			
+//			for(int i = 0; i < network.getNoLinks(); i ++) {
+//				System.out.print("Gflow[" + i + "] in iteration is " + globalFlow[i] + "\n");
+//			}
+//			
+//		 	System.out.print("current delay in iteration is " + CurrentDelay + "\n");
+//			count++;
+		}
+		//return getGlobalFlows(network);
+	}
+
+	
+	private void SetLinkLens(Float[] Flow,Integer MsgLen) {
+		int i = 0;
+		for(CustomizedLink clink:this.FDMtopoinstance.getallLinks()){
+			clink.currentlinklength = DerivDelay(Flow[i++],clink.getCapacity(), MsgLen);
+		}
+	}
+
+	
+	private void SetSP() {
+		
+		for(PathId pid: this.FDMtopoinstance.getadj().keySet()){
+			Float dis = Float.MAX_VALUE;
+			for(LinkedList<Integer> l:this.FDMtopoinstance.getadj().get(pid)){
+				Float tmp_dis = calculatAlllatency(l);
+				if(tmp_dis<dis){
+					dis = tmp_dis;
+					shortestPath.put(pid,l);
 				}
 			}
-			if(Aflag == true && CurrentDelay >= PreviousDelay*(1-EPSILON)) {
-			//if ((Aflag == true && (max_FD_len - min_FD_len)<EPSILON)||count==100) {
-				System.out.print("The problem is infeasible. Now reduce the request.\n");
-				prInteger = false;
-				break;
-			}
-			
-			for(int i = 0; i < network.getNoLinks(); i ++) {
-				System.out.print("Gflow[" + i + "] in iteration is " + globalFlow[i] + "\n");
-			}
-			
-		 	System.out.print("current delay in iteration is " + CurrentDelay + "\n");
-			count++;
-		}
-		if(prInteger) {
-			System.out.print("\n");
-		 	for(int i = 0; i < network.getNoLinks(); i ++) {
-				System.out.print("Gflow[" + i + "] is " + globalFlow[i] + "\n");
-				System.out.print("fd_length[" + i + "] is " + FDlen[i] + "\n");
-			}
-
-		 	System.out.println("current delay is " + CurrentDelay);
-			System.out.println("current count is " + count);
-		}
-//		else {
-//
-//			//initialize request for infeasible problem
-//			for(i = 0; i < NN; i++) {
-//				for(n = 0; n < NN; n++) {
-//					if (Req[i][n] != 0) {
-//						MM_Req[i][n] = STEP;
-//					}
-//				}
-//			}
-//			prInteger = true;
-//			while(prInteger) {
-//				TotReq = 0;
-//				PreviousDelay = INFINITY;
-//
-//				for(i = 0; i < NN; i++) {
-//					for(n = 0; n < NN; n ++) {
-//						TotReq += MM_Req[i][n];
-//					}
-//				}
-//				for(i = 0; i < network.getNoLinks(); i ++) {
-//					Gflow[i] = 0;
-//				}
-//				SetLinkLens(NL, Gflow, Cap, MsgLen, FDlen, Cost);
-//				SetSP(NN, End2, FDlen, Adj, shortestPathDistance, SPpred);
-//				LoadLinks(NN, NL, MM_Req, SPpred, End1, Gflow);
-//				Aresult = AdjustCaps(NL, Gflow, Cap, NewCap);
-//				if (Aresult == 1)
-//					Aflag = 0;
-//				else
-//					Aflag = 1;
-//				CurrentDelay = CalcDelay(NL, Gflow, NewCap, MsgLen, TotReq, Cost);
-//				count = 0;
-//				while(Aflag || (CurrentDelay < PreviousDelay*(1-EPSILON))) {
-//					SetLinkLens(NL, Gflow, NewCap, MsgLen, FDlen, Cost);
-//					SetSP(NN, End2, FDlen, Adj, SPdist, SPpred);
-//					LoadLinks(NN, NL, MM_Req, SPpred, End1, Eflow);
-//					Superpose(NL, Eflow, Gflow, NewCap, TotReq, MsgLen, Cost);
-//
-//					if (Aflag) {
-//						Aresult = AdjustCaps(NL, Gflow, Cap, NewCap);
-//						if (Aresult == 1)
-//							Aflag = 0;
-//						else
-//							Aflag = 1;
-//					}
-//					PreviousDelay = CurrentDelay;
-//					CurrentDelay = CalcDelay(NL, Gflow, NewCap, MsgLen, TotReq, Cost);
-//					//judge whether the problem is feasible 
-//					Float max_FD_len = 0, min_FD_len = INFINITY;
-//					for (Integer i = 0; i < network.getNoLinks(); i++) {
-//						if (FDlen[i] > 0) {
-//							max_FD_len = max(max_FD_len, FDlen[i]);
-//							min_FD_len = min(min_FD_len, FDlen[i]);
-//						}
-//					}
-//					//if(Aflag == 1 && (CurrentDelay >= PreviousDelay*(1-EPSILON))) {
-//					if ((Aflag == 1 && (max_FD_len - min_FD_len)<EPSILON) || count == 100) {
-//						System.out.print("The problem becomes infeasible.\n");
-//						prInteger = 0;
-//						break;
-//					}
-//					count++;
-//				}
-//
-//				//increase the MM_Req
-//				for(i = 0; i < NN; i++) {
-//					for(n = 0; n < NN; n++) {
-//						MM_Req[i][n] = min(Req[i][n], MM_Req[i][n] + STEP);
-//						
-//					}
-//				}
-//				if(prInteger == 0) {
-//					for(i = 0; i < network.getNoLinks(); i++) {
-//						System.out.print("When the problem is feasible Gflow[%d] = %f\n", i, Pflow[i]);
-//					}
-//				}	
-//				for(i = 0; i < network.getNoLinks(); i++) {
-//					Pflow[i] = Gflow[i];
-//				}		
-//			}
-//		}
-		return getGlobalFlows(network);
-	}
-
-	void SetLinkLens(Float[] Flow, Float[] Cap, Integer MsgLen, Float[] Len) {
-		for(Integer l = 0; l < Flow.length; l++) {
-			Len[l] = DerivDelay(Flow[l], Cap[l], MsgLen);
 		}
 	}
-
-	void SetSP(FDMTopology network, Float Len[], LinkedList<Integer>[] Adj, Float SPdist[][], Integer SPpred[][]) {
-
-		for(Integer node = 0; node < Adj.length; node++) {
-			Bellman(node, network, Len, Adj, SPpred[node], SPdist[node]);
+	
+	private Float calculatAlllatency(LinkedList<Integer> path){
+		Float latency = 0.0f;
+		
+		for(Integer p:path){
+			CustomizedLink curlink = this.FDMtopoinstance.getCustomizedLink(p);
+			latency = curlink.currentlinklength + curlink.getLatency().getValue(); 
 		}
+		return latency;
 	}
-
+	
+	/*
+	 * Because flowDeviation should choose the shortest path from the given path. 
+	 * This function is not valid any more;
+	 * 
 	void Bellman(Integer root, FDMTopology network, Float LinkLength[], LinkedList<Integer>[] Adj, Integer Pred[], Float Dist[]) {
 		Integer[] Hop = new Integer[Adj.length];
 		for (Integer i = 0; i < Adj.length; i++) {
@@ -243,7 +211,6 @@ class FlowDeviationMethod {
 		Pred[root] = root;
 		
 		Stack<Integer> scanqueue = new Stack<Integer>();
-//		stack<Integer> scanqueue;
 		scanqueue.push(root);
 		while (!scanqueue.empty()) {
 			Integer node = scanqueue.peek();
@@ -268,47 +235,39 @@ class FlowDeviationMethod {
 		}
 
 	}
-
-	void LoadLinks(Float Req[][], Integer SPpred[][], FDMTopology network, Float Flow[]) {
-		Integer m;
-		Integer p;
-		Integer link;
-		for(Integer i = 0; i < network.getNoLinks(); i ++) {
+	
+	*/
+	private void LoadLinks(Float Flow[]) {
+		for(Integer i = 0; i < Flow.length; i ++) {
 			Flow[i] = 0.0f;
 		}
-		for(Integer s = 0; s < Req.length; s++) {
-			for( Integer d = 0; d < Req.length; d++) {
-				if(Req[s][d] > 0) {
-					m = d;
-					while(m != s) {
-						link = SPpred[s][m];
-						p = network.getEnd1(link);
-						Flow[link] += Req[s][d];
-						m = p;
-					}	
-				}
+		for(PathId pid: this.shortestPath.keySet()){
+			float req = FDMtopoinstance.getCustomizedLink(0).getrequirement();
+			for(Integer index:shortestPath.get(pid)){
+				Flow[index]+=req;
 			}
+		}	
+	}
+
+	
+	private Float AdjustCaps(Float Flow[],Float NewCap[]) {
+		Float factor = 1.0f;
+		for( Integer i = 0; i < Flow.length; i++) {
+			factor = Math.max(factor, (1+DELTA)*Flow[i]/this.FDMtopoinstance.getCustomizedLink(i).getCapacity());
 		}
+		for(Integer i = 0; i < Flow.length; i++) {
+			NewCap[i] = factor*FDMtopoinstance.getCustomizedLink(i).getCapacity();
+		}
+		return factor;
 	}
 
-Float AdjustCaps(Float Flow[], Float Cap[], Float NewCap[]) {
-	Float factor = 1.0f;
-	for( Integer i = 0; i < Flow.length; i++) {
-		factor = Math.max(factor, (1+DELTA)*Flow[i]/Cap[i]);
+	private Float CalcDelay(Float Flow[], Float Cap[], Integer MsgLen, Float TotReq) {
+		Float sum = 0.0f;
+		for (Integer u = 0; u < Flow.length; u++) {
+			sum = sum + Flow[u]*LinkDelay(Flow[u],Cap[u],MsgLen);
+		}
+		return sum/TotReq;
 	}
-	for(Integer q = 0; q < Flow.length; q++) {
-		NewCap[q] = factor*Cap[q];
-	}
-	return factor;
-}
-
-Float CalcDelay(Float Flow[], Float Cap[], Integer MsgLen, Float TotReq) {
-	Float sum = 0.0f;
-	for (Integer u = 0; u < Flow.length; u++) {
-		sum = sum + Flow[u]*LinkDelay(Flow[u],Cap[u],MsgLen);
-	}
-	return sum/TotReq;
-}
 
 void Superpose(Float Eflow[], Float Gflow[], Float Cap[], Float TotReq, Integer MsgLen) {
 	Float x = FindX(Gflow, Eflow, Cap, TotReq, MsgLen);

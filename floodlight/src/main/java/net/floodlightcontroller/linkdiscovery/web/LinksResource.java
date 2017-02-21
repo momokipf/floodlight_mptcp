@@ -55,7 +55,7 @@ public class LinksResource extends ServerResource {
                 get(ILinkDiscoveryService.class.getCanonicalName());
         Map<Link, LinkInfo> links = new HashMap<Link, LinkInfo>();
         Set<LinkWithType> returnLinkSet = new HashSet<LinkWithType>();
-
+        System.out.println("rest server response here /LinksResource");
         if (ld != null) {
             links.putAll(ld.getLinks());
             for (Link link: links.keySet()) {
@@ -101,6 +101,7 @@ public class LinksResource extends ServerResource {
     
     @Post("json")
     public Set<LinkWithType> storeLink(String json){
+    
     	ILinkDiscoveryService ld = (ILinkDiscoveryService)getContext().getAttributes().
                 get(ILinkDiscoveryService.class.getCanonicalName());
     	Map<Link, LinkInfo> links = new HashMap<Link, LinkInfo>();
@@ -130,22 +131,23 @@ public class LinksResource extends ServerResource {
 				if(jp.getCurrentToken()!=JsonToken.FIELD_NAME){
 					throw new IOException("Expected FIELD_NAME");
 				}
-			}
 			
-			String n = jp.getCurrentName().toLowerCase();
-			jp.nextToken();
-			switch(n){
-			case STR_SRCSW: src_sw = jp.getText();
-							break;
-			case STR_SRCPOR:src_port = jp.getText();
-							break;
-			case STR_DSTSW: dst_sw = jp.getText();
-							break;
-			case STR_DSTPOR:dst_port = jp.getText();
-							break;
-			case STR_CAP: cap = Float.parseFloat( jp.getText());
-							break;
-			default : break;
+			
+				String n = jp.getCurrentName().toLowerCase();
+				jp.nextToken();
+				switch(n){
+				case STR_SRCSW: src_sw = jp.getText();
+								break;
+				case STR_SRCPOR:src_port = jp.getText();
+								break;
+				case STR_DSTSW: dst_sw = jp.getText();
+								break;
+				case STR_DSTPOR:dst_port = jp.getText();
+								break;
+				case STR_CAP: cap = Float.parseFloat( jp.getText());
+								break;
+				default : break;
+				}
 			}
 			
 		}

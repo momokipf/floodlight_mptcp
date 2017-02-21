@@ -99,7 +99,7 @@ public class LinksResource extends ServerResource {
     }
     
     
-    @Post("json")
+    @Post
     public Set<LinkWithType> storeLink(String json){
     
     	ILinkDiscoveryService ld = (ILinkDiscoveryService)getContext().getAttributes().
@@ -114,7 +114,7 @@ public class LinksResource extends ServerResource {
 		String dst_sw = null;
 		String dst_port = null;
 		Float cap = Float.MAX_VALUE;
-		
+		System.out.println(json);
 		try{
 			try{
 				jp = f.createParser(json);

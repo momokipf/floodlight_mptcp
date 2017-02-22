@@ -12,15 +12,18 @@ import java.util.Set;
 
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.U64;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import net.floodlightcontroller.core.types.NodePortTuple;
+import net.floodlightcontroller.forwarding.Forwarding;
 import net.floodlightcontroller.linkdiscovery.Link;
 import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.routing.PathId;
 
 
 class FDMTopology {
-
+	protected static final Logger log = LoggerFactory.getLogger(FDMTopology.class);
 	
 	//LinkedList<Link> allLinks = new LinkedList<Link>();
 	private ArrayList<CustomizedLink> allLinks;// = new ArrayList<CustomizedLink>();
@@ -45,6 +48,7 @@ class FDMTopology {
 				int currentIndex = cusLinks.size();
 				CustomizedLink cuslink = new CustomizedLink(link,Float.MAX_VALUE,0.0f);
 				cusLinks.add(cuslink);
+				log.info(cuslink.toString());
 				this.invertlinkmap.put(cuslink, currentIndex);
 			}
 		}

@@ -42,20 +42,20 @@ class FDMTopology {
 	public FDMTopology(Integer msgLen, Map<DatapathId, Set<Link>> topLinks) {
 		
 		ArrayList<CustomizedLink> cusLinks = new ArrayList<CustomizedLink>();
-		
+		invertlinkmap = new HashMap<CustomizedLink,Integer>();
 		for(DatapathId s:topLinks.keySet()){
 			for(Link link:topLinks.get(s)){
 				int currentIndex = cusLinks.size();
 				CustomizedLink cuslink = new CustomizedLink(link,Float.MAX_VALUE,0.0f);
 				cusLinks.add(cuslink);
-				log.info(cuslink.toString());
+				//System.out.println(cuslink.toString());
 				this.invertlinkmap.put(cuslink, currentIndex);
 			}
 		}
 		switchesnum = topLinks.keySet().size();
 		adjlinkfromswitch = new HashMap<PathId,List<LinkedList<Integer>>>();
-		
-		initRequirements();
+		allLinks = cusLinks;
+		//initRequirements();
 	}
 	
 	
@@ -65,6 +65,7 @@ class FDMTopology {
 		for(Path path:paths){
 			List<NodePortTuple> nstlist = path.getPath();
 			ArrayList<LinkedList<Integer>> ll = null;
+			log.info(path.toString());
 			if(this.adjlinkfromswitch.containsKey(path.getId())){
 				ll = (ArrayList<LinkedList<Integer>>)adjlinkfromswitch.get(path.getId());
 			}
@@ -72,25 +73,24 @@ class FDMTopology {
 				ll = new ArrayList<LinkedList<Integer>>();
 			}
 			LinkedList<Integer> l = new LinkedList<Integer>();
-			for(NodePortTuple n: nstlist){
-				int index = nstlist.indexOf(n);	
-				if(index!=nstlist.size()-1){
-					Link link = new Link(n.getNodeId(),n.getPortId(),nstlist.get(index+1).getNodeId(),nstlist.get(index+1).getPortId(),U64.of(0L));
-					int lindex = -1;
-					if(invertlinkmap.containsKey((CustomizedLink)link)){
-						lindex = invertlinkmap.get((CustomizedLink)link);
-						// for test, assume req = 2.0f;
-						if(index==0){
-							allLinks.get(lindex).setrequirement(2.0f);
-							this.total_requirement += 2.0f;
-						}
+
+			for(int i=1 ; i < nstlist.size()-1; i+=2){
+				CustomizedLink link = new CustomizedLink(new Link(nstlist.get(i).getNodeId(),nstlist.get(i).getPortId(),nstlist.get(i+1).getNodeId(),nstlist.get(i+1).getPortId(),U64.of(0L)));
+				int lindex = -1;
+				if(invertlinkmap.containsKey(link)) {
+					lindex = invertlinkmap.get(link);
+					// for test, assume req = 2.0f;
+					if(i==1){
+						allLinks.get(lindex).setrequirement(2.0f);
+						this.total_requirement += 2.0f;
 					}
-					else{
-						System.out.println("Can find "+link.toKeyString());
-						break;
-					}
-					l.addLast(lindex);
+					System.out.println("find the link"+ allLinks.get(lindex).toString() );
 				}
+				else{
+					System.out.println("Cannot find "+link.toKeyString());
+					break;
+				}
+				l.addLast(lindex);
 			}
 			ll.add(l);
 		}

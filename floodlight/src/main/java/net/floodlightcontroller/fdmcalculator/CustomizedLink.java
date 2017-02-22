@@ -29,10 +29,16 @@ public class CustomizedLink extends Link{
 		//super();
 		this.linkattribute = link;
 		this.requirement = req;
-		this.currentlinklength=Float.POSITIVE_INFINITY;
+		this.currentlinklength=0.0f;
 	}
 	
-	
+	public CustomizedLink(Link link){
+		this.linkattribute = link;
+		this.requirement = 0.0f;
+		this.currentlinklength=0.0f;
+	}
+
+
 	/*
 	public void setcapaity(float f){
 		
@@ -57,7 +63,7 @@ public class CustomizedLink extends Link{
 	
 	@Override
     public String toString() {
-		return "Customized"+this.linkattribute.toString()+'\n'+
+		return "Customized"+linkattribute.toString()+'\n'+
 				"Customized Field [ requirement="+ this.requirement+
 				"]";
     }
@@ -71,7 +77,13 @@ public class CustomizedLink extends Link{
 	
 	@Override
     public int hashCode() {
-        return super.hashCode();
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + (int) (linkattribute.getDst().getLong() ^ (linkattribute.getDst().getLong() >>> 32));
+        result = prime * result + linkattribute.getDstPort().getPortNumber();
+        result = prime * result + (int) (linkattribute.getSrc().getLong() ^ (linkattribute.getSrc().getLong() >>> 32));
+        result = prime * result + linkattribute.getSrcPort().getPortNumber();
+        return result; /* do not include latency */
     }
 	 
 	public int compareTo(CustomizedLink a) {

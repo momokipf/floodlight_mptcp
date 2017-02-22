@@ -43,6 +43,7 @@ class FlowDeviationMethod {
 		NewCap = new Float[FDMtopoinstance.getNoLinks()];
 		globalFlow = new Float[FDMtopoinstance.getNoLinks()];
 		EFlow = new Float[FDMtopoinstance.getNoLinks()];
+		runFDM();
 	}
 
 
@@ -71,7 +72,7 @@ class FlowDeviationMethod {
 //		return globalFlows;
 //	}
 
-	public void runFDM(FDMTopology network) {
+	public void runFDM() {
 		
 //		//Initialization Code
 //		
@@ -110,14 +111,14 @@ class FlowDeviationMethod {
 		Integer count = 0;
 		//start to run FDM
 		while(Aflag || (CurrentDelay < PreviousDelay*(1-EPSILON))) {
-			SetLinkLens(globalFlow,network.getMsgLen());
+			SetLinkLens(globalFlow,FDMtopoinstance.getMsgLen());
 			SetSP();
 			LoadLinks(EFlow);
 			//previous delay based on current NewCap
-			PreviousDelay = CalcDelay(globalFlow, NewCap, network.getMsgLen(), network.getTotal_requirement());
-			Superpose(EFlow, globalFlow, NewCap, network.getTotal_requirement(), network.getMsgLen());
+			PreviousDelay = CalcDelay(globalFlow, NewCap, FDMtopoinstance.getMsgLen(), FDMtopoinstance.getTotal_requirement());
+			Superpose(EFlow, globalFlow, NewCap, FDMtopoinstance.getTotal_requirement(), FDMtopoinstance.getMsgLen());
 			//current delay after superposition
-			CurrentDelay = CalcDelay(globalFlow, NewCap, network.getMsgLen(), network.getTotal_requirement());
+			CurrentDelay = CalcDelay(globalFlow, NewCap, FDMtopoinstance.getMsgLen(), FDMtopoinstance.getTotal_requirement());
 			
 			if(Aflag) {
 				Aresult = AdjustCaps(globalFlow, NewCap);

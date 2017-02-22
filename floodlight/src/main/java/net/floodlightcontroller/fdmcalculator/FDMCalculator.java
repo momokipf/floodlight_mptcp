@@ -87,13 +87,13 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 	public void startUp(FloodlightModuleContext context) 
 			throws FloodlightModuleException {
 		// TODO Auto-generated method stub
-		buildTopology();
 		log.info("rebuild topology");
 	}
 
 	@Override
 	public void topologyChanged(List<LDUpdate> linkUpdates) {
 		// Update our topology
+		buildTopology();
 		log.info("topologyChanged");
 	}
 
@@ -164,7 +164,6 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 		//Map<DatapathId, Set<Link>> linkMap = tm.getCurrentTopologyInstance(
 		//Set<DatapathId> switches = tm.getCurrentTopologyInstance().getSwitches();
 			currentInstance = new FDMTopology(1,this.topologyService.getAllLinks());
-
 	}
 
 	

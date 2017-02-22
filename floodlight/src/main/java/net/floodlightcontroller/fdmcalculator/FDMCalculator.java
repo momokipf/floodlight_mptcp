@@ -76,7 +76,7 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 			throws FloodlightModuleException {
 		// Initialize our dependencies
 		topologyService = context.getServiceImpl(ITopologyService.class);
-		//topologyService.addListener(FDMCalculator.this);
+		topologyService.addListener(FDMCalculator.this);
 		//tm = (ITopologyManagerBackend)context.getServiceImpl(ITopologyService.class);
 		//buildTopology();
 		log.info("init");
@@ -87,7 +87,8 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 	public void startUp(FloodlightModuleContext context) 
 			throws FloodlightModuleException {
 		// TODO Auto-generated method stub
-		log.info("FDM modlue,startup");
+		buildTopology();
+		log.info("rebuild topology");
 	}
 
 	@Override
@@ -124,6 +125,14 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 		return globalLinkFlows.get(link);
 	}
 	
+	@Override
+	public void addPath(Path p){
+		
+		ArrayList<Path> tmp = new ArrayList<Path>();
+		tmp.add(p);
+		this.currentInstance.addPathtoTopology(tmp);
+	}
+	
 	public Float getFlowBW(IOFSwitch currentSwitch, OFPort currentPort,IOFSwitch nextSwitch, OFPort nextPort) {
 		U64 latency = U64.of(0L);
 		
@@ -154,9 +163,7 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 		// Variables we need
 		//Map<DatapathId, Set<Link>> linkMap = tm.getCurrentTopologyInstance(
 		//Set<DatapathId> switches = tm.getCurrentTopologyInstance().getSwitches();
-		if(currentInstance==null){
 			currentInstance = new FDMTopology(1,this.topologyService.getAllLinks());
-		}
 
 	}
 

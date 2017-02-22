@@ -662,30 +662,32 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                                          U64 cookie = makeForwardingCookie(decision, flowSetId);
 
                                          IOFSwitch  currentSwitch = switchService.getSwitch((p.getPath().get(1).getNodeId()));
-                                        OFPort currentPort = p.getPath().get(1).getPortId();         
-                                        IOFSwitch  nextSwitch = switchService.getSwitch((p.getPath().get(2).getNodeId()));
-                                        OFPort nextPort = p.getPath().get(2).getPortId();
-                                        //DropMeter dm = new DropMeter();
-                                         log.info("rate:{}",dm.createMeter(currentSwitch, currentPort, nextSwitch, nextPort));
-                                         dm.bindMeterWithFlow(srcPort, destcpPort, srcIp2, currentSwitch, srctcpPort, p);
+                                         OFPort currentPort = p.getPath().get(1).getPortId();         
+                                         IOFSwitch  nextSwitch = switchService.getSwitch((p.getPath().get(2).getNodeId()));
+                                         OFPort nextPort = p.getPath().get(2).getPortId();
+                                         //DropMeter dm = new DropMeter();
+                                         dm.addpathtoFDMmodule(p);
+                                         //log.info("rate:{}",dm.createMeter(currentSwitch, currentPort, nextSwitch, nextPort));
+                                         
+                                         //dm.bindMeterWithFlow(srcPort, destcpPort, srcIp2, currentSwitch, srctcpPort, p);
 
-                                        pushRoute(p, m, pi, sw.getId(), cookie, 
+                                         pushRoute(p, m, pi, sw.getId(), cookie, 
                                                     cntx, requestFlowRemovedNotifn,
                                                 flowModCommand);      
-                                        log.info("pushRoute inPort={} route={} " +
+                                         log.info("pushRoute inPort={} route={} " +
                                                 "destination={}:{}",
                                                 new Object[] { srcPort, p ,
                                                         dstAp.getNodeId(),
                                                         dstAp.getPortId()});
-                                        //log.info("Switch id:{},Port{}",sw.getId().toString(),p.getPath().get(1).getPortId().toString());
-                                        for (NodePortTuple npt : p.getPath()) {
+                                         //log.info("Switch id:{},Port{}",sw.getId().toString(),p.getPath().get(1).getPortId().toString());
+                                         for (NodePortTuple npt : p.getPath()) {
                                                 //log.info(npt.toString());
                                                 flowSetIdRegistry.registerFlowSetId(npt, flowSetId);
-                                        }
-                                        log.info("flowid {}",flowSetId.toString());
-                                        uniquepathcache.put(ports, p);
-                                        flowidset.put(p.getPath().toString(),flowSetId);
-                                        break;
+                                         }
+                                         log.info("flowid {}",flowSetId.toString());
+                                         uniquepathcache.put(ports, p);
+                                         flowidset.put(p.getPath().toString(),flowSetId);
+                                         break;
                                     }
                                 }
 
@@ -788,8 +790,9 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                                         IOFSwitch  nextSwitch = switchService.getSwitch((newPath.getPath().get(2).getNodeId()));
                                         OFPort nextPort = newPath.getPath().get(2).getPortId();
                                         //DropMeter dm = new DropMeter();
-                                        log.info("rate:{}",dm.createMeter(currentSwitch, currentPort, nextSwitch, nextPort));
-                                        dm.bindMeterWithFlow(srcPort, destcpPort, srcIp2, currentSwitch, srctcpPort, newPath);
+                                        
+                                        //log.info("rate:{}",dm.createMeter(currentSwitch, currentPort, nextSwitch, nextPort));
+                                        //dm.bindMeterWithFlow(srcPort, destcpPort, srcIp2, currentSwitch, srctcpPort, newPath);
 
 
                                         pushRoute(newPath, m, pi, sw.getId(), cookie, 
@@ -899,8 +902,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                     IOFSwitch  nextSwitch = switchService.getSwitch((p.getPath().get(2).getNodeId()));
                     OFPort nextPort = p.getPath().get(2).getPortId();
                     //DropMeter dm = new DropMeter();
-                    log.info("rate:{}",dm.createMeter(currentSwitch, currentPort, nextSwitch, nextPort));
-                    dm.bindMeterWithFlow(srcPort, destcpPort, srcIp2, currentSwitch, srctcpPort, p);
+                    //log.info("rate:{}",dm.createMeter(currentSwitch, currentPort, nextSwitch, nextPort));
+                    //dm.bindMeterWithFlow(srcPort, destcpPort, srcIp2, currentSwitch, srctcpPort, p);
 
                     pushRoute(uniquepathcache.get(ports), m, pi, sw.getId(), cookie,
                         cntx, requestFlowRemovedNotifn,OFFlowModCommand.MODIFY);

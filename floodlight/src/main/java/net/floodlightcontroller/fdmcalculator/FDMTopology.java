@@ -32,7 +32,7 @@ class FDMTopology {
 	private Map<CustomizedLink,Integer> invertlinkmap;
 	private Map<PathId,List<LinkedList<Integer>>> adjlinkfromswitch;  // Assume one allocation per node
 	
-	private Float[] req;
+	//private Float[] req;
 	
 	Float total_requirement = 0.0f;
 	

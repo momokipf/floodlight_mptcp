@@ -36,6 +36,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.routing.Path;
 
 import org.projectfloodlight.openflow.types.TransportPort;
 import net.floodlightcontroller.fdmcalculator.FDMCalculator; 
@@ -79,6 +80,11 @@ public class DropMeter{
 	            currentSwitch.write(meterModBuilder.build());
 	            return rate;
 	     }
+	    
+	    public void addpathtoFDMmodule(Path p){
+	    	this.fdmservice.addPath(p);
+	    }
+	    
 	    
 	    public void bindMeterWithFlow(OFPort inPort, TransportPort dstPort, IPv4Address srcIp, IOFSwitch sw, TransportPort srcPort, Path path) {
 	    	Match.Builder mb = sw.getOFFactory().buildMatch();

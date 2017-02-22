@@ -10,7 +10,7 @@ import org.projectfloodlight.openflow.types.OFPort;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.linkdiscovery.Link;
-
+import net.floodlightcontroller.routing.Path;
 /**
  * @author Waleed Ishrat Rahman and Krit Sae Fang
  * For UCLA CS218 Project - Fall 2016
@@ -56,4 +56,6 @@ public interface IFDMCalculatorService extends IFloodlightService {
 	 * @return bandwidth
 	 */
 	public Float getFlowBW(IOFSwitch currentSwitch, OFPort currentPort,IOFSwitch nextSwitch, OFPort nextPort);
+	
+	public void addPath(Path p);
 }

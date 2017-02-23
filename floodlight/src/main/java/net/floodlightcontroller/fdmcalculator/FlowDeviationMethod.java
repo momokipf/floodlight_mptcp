@@ -9,6 +9,8 @@ import java.util.Set;
 import java.util.Stack;
 
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import net.floodlightcontroller.linkdiscovery.Link;
 import net.floodlightcontroller.routing.Path;
@@ -16,7 +18,7 @@ import net.floodlightcontroller.routing.PathId;
 
 
 class FlowDeviationMethod {
-	
+	protected static final Logger log = LoggerFactory.getLogger(FlowDeviationMethod.class);
 	/*
 	 * this.EPSILON = 0.00001f;
 	 * this.DELTA = 0.002f;
@@ -43,7 +45,6 @@ class FlowDeviationMethod {
 		NewCap = new Float[FDMtopoinstance.getNoLinks()];
 		globalFlow = new Float[FDMtopoinstance.getNoLinks()];
 		EFlow = new Float[FDMtopoinstance.getNoLinks()];
-		runFDM();
 	}
 
 
@@ -91,6 +92,7 @@ class FlowDeviationMethod {
 //			EFlow[i] = 0.0f;
 //  //			Cost[i] = 0;
 //		}
+		log.info("/*********************Start fdm algorithm*****************************/");
 		
 		Float PreviousDelay = Float.POSITIVE_INFINITY;
 //		Integer i, n;
@@ -133,7 +135,7 @@ class FlowDeviationMethod {
 		
 		if(feasible){
 			for(Float i:globalFlow){
-				System.out.print(i +' ');
+				log.info(i.toString() +' ');
 			}
 			//return globalFlow;
 		}

@@ -138,7 +138,8 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 		
 		ArrayList<Path> tmp = new ArrayList<Path>();
 		tmp.add(p);
-		this.currentInstance.addPathtoTopology(tmp);
+		if(currentInstance!=null)
+			this.currentInstance.addPathtoTopology(tmp);
 	}
 	
 	@Override
@@ -152,7 +153,8 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 			List<Float> list = new ArrayList<Float>();
 			list.add(req);list.add(cap);
 			rule.put(nodetuple,list);
-			currentInstance.updateCusLink(nodetuple,req,cap);
+			if(currentInstance!=null)
+				currentInstance.updateCusLink(nodetuple,req,cap);
 		}
 	}
 	
@@ -182,6 +184,8 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 	 */
 	private void calculateFDM() {
 		// TODO FDM code here
+		FlowDeviationMethod fdm = new FlowDeviationMethod(this.currentInstance);
+		fdm.runFDM();
 	}
 	
 	/**

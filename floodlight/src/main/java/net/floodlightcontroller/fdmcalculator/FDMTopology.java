@@ -31,6 +31,8 @@ class FDMTopology {
 	//private Set<CustomizedLink> linkset;// = new HashSet<CustomizedLink>();
 	private Map<CustomizedLink,Integer> invertlinkmap;
 	private Map<PathId,List<LinkedList<Integer>>> adjlinkfromswitch;  // Assume one allocation per node
+
+	private Map<String,CustomizedLink> cuslinksmapping;
 	
 	//private Float[] req;
 	
@@ -42,27 +44,34 @@ class FDMTopology {
 	public FDMTopology(Integer msgLen, Map<DatapathId, Set<Link>> topLinks,Map<String,List<Float>> rule) {
 		
 		ArrayList<CustomizedLink> cusLinks = new ArrayList<CustomizedLink>();
-		invertlinkmap = new HashMap<CustomizedLink,Integer>();
+		Map<String,CustomizedLink> linksmapping = new HashMap<String,CustomizedLink>();
+
+		//invertlinkmap = new HashMap<CustomizedLink,Integer>();
+
 		for(DatapathId s:topLinks.keySet()){
 			for(Link link:topLinks.get(s)){
 				int currentIndex = cusLinks.size();
-				String SwitchTuple = link.getSrc().toString()+'-'+link.getSrcPort().toString()+'-'+
+				String switchTuple = link.getSrc().toString()+'-'+link.getSrcPort().toString()+'-'+
 										link.getDst().toString()+'-'+link.getDstPort();
 				CustomizedLink cuslink = null;
-				if(rule.containsKey(SwitchTuple)){
-					cuslink = new CustomizedLink(link,rule.get(SwitchTuple).get(1),rule.get(SwitchTuple).get(0));
+				if(rule.containsKey(switchTuple)){
+					log.info("find the rules");
+					cuslink = new CustomizedLink(link,rule.get(switchTuple).get(1),rule.get(switchTuple).get(0));
 				}
 				else{
+					log.info("failed to find the rules");
 					cuslink = new CustomizedLink(link,Float.MAX_VALUE,0.0f);
 				}
 				cusLinks.add(cuslink);
+				linksmapping.put(switchTuple,cuslink);
 				//System.out.println(cuslink.toString());
-				this.invertlinkmap.put(cuslink, currentIndex);
+				//this.invertlinkmap.put(cuslink, currentIndex);
 			}
 		}
 		switchesnum = topLinks.keySet().size();
 		adjlinkfromswitch = new HashMap<PathId,List<LinkedList<Integer>>>();
 		allLinks = cusLinks;
+		cuslinksmapping = linksmapping;
 		//initRequirements();
 	}
 	
@@ -83,22 +92,22 @@ class FDMTopology {
 			LinkedList<Integer> l = new LinkedList<Integer>();
 
 			for(int i=1 ; i < nstlist.size()-1; i+=2){
-				CustomizedLink link = new CustomizedLink(new Link(nstlist.get(i).getNodeId(),nstlist.get(i).getPortId(),nstlist.get(i+1).getNodeId(),nstlist.get(i+1).getPortId(),U64.of(0L)));
-				int lindex = -1;
-				if(invertlinkmap.containsKey(link)) {
-					lindex = invertlinkmap.get(link);
-					// for test, assume req = 2.0f;
+
+				String switchTuple = nstlist.get(i).getNodeId().toString()+'-'+nstlist.get(i).getPortId().toString()+'-'+nstlist.get(i+1).getNodeId().toString()+'-'+nstlist.get(i+1).getPortId().toString();
+				if(cuslinksmapping.containsKey(switchTuple)){
+					CustomizedLink link =cuslinksmapping.get(switchTuple);
+					int index = allLinks.indexOf(link); 
 					if(i==1){
-						allLinks.get(lindex).setrequirement(2.0f);
-						this.total_requirement += 2.0f;
+						link.setrequirement(2.0f);
+						this.total_requirement +=2.0f;
 					}
-					System.out.println("find the link"+ allLinks.get(lindex).toString() );
+					System.out.println("find the link"+ link.toString() );
+					l.addLast(index);
 				}
 				else{
-					System.out.println("Cannot find "+link.toKeyString());
+					System.out.println("Cannot find "+switchTuple);
 					break;
 				}
-				l.addLast(lindex);
 			}
 			ll.add(l);
 		}
@@ -123,7 +132,7 @@ class FDMTopology {
 	}
 	
 	public Integer getCustomizedLinkindex(CustomizedLink cl){
-		return this.invertlinkmap.get(cl);
+		return this.allLinks.indexOf(cl);
 	}
 	
 	public Integer getNoLinks() {
@@ -132,6 +141,20 @@ class FDMTopology {
 
 	public Integer getNoNodes() {
 		return switchesnum;
+	}
+
+
+	public void updateCusLink(String nodeTuple,Float req,Float cap){
+		if(cuslinksmapping.containsKey(nodeTuple)) {
+			CustomizedLink link = cuslinksmapping.get(nodeTuple);
+			link.setCapacity(cap);
+			link.setrequirement(req);
+			System.out.println("find the link"+ link.toString() );
+		}
+		else{
+			System.out.println("Cannot find "+nodeTuple);
+		}
+		return;
 	}
 	
 //	public void initCapacity(Float[] linkCapacities) {

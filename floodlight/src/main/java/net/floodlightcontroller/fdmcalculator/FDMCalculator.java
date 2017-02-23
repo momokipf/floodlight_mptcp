@@ -152,6 +152,7 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 			List<Float> list = new ArrayList<Float>();
 			list.add(req);list.add(cap);
 			rule.put(nodetuple,list);
+			currentInstance.updateCusLink(nodetuple,req,cap);
 		}
 	}
 	

@@ -29,6 +29,7 @@ public class CustomizedLink extends Link{
 		//super();
 		this.linkattribute = link;
 		this.requirement = req;
+		this.capacity = cap;
 		this.currentlinklength=0.0f;
 	}
 	
@@ -40,7 +41,7 @@ public class CustomizedLink extends Link{
 
 
 	
-	public void setcapaity(float cap){
+	public void setCapacity(float cap){
 		this.capacity = cap;
 	}
 	
@@ -63,9 +64,9 @@ public class CustomizedLink extends Link{
 	
 	@Override
     public String toString() {
-		return "Customized"+linkattribute.toString()+'\n'+
+		return "Customized"+linkattribute.toString()+' '+
 				"Customized Field [ requirement="+ this.requirement+
-				"capacity=" + this.capacity+
+				" capacity=" + this.capacity+
 				"]";
     }
 	

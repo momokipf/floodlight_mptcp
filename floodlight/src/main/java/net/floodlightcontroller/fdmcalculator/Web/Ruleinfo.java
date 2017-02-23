@@ -34,7 +34,7 @@ public class Ruleinfo extends JsonSerializer<Ruleinfo> {
 		this.srcPort = parts[1];
 		this.dstSwDpid = parts[2];
 		this.dstPort = parts[3];
-		
+
 		this.requirement = value.get(0);
 		this.capacity = value.get(1);
 		

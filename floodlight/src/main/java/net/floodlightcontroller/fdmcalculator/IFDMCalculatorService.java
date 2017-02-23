@@ -4,6 +4,9 @@
  */
 package net.floodlightcontroller.fdmcalculator;
 
+
+import java.util.Map;
+import java.util.List;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 
@@ -57,5 +60,19 @@ public interface IFDMCalculatorService extends IFloodlightService {
 	 */
 	public Float getFlowBW(IOFSwitch currentSwitch, OFPort currentPort,IOFSwitch nextSwitch, OFPort nextPort);
 	
+	/*
+	 * Describe: the path need to add into FDM module
+	 * @param  the path need to add into FDM module
+	 * No return
+	 */
 	public void addPath(Path p);
+	
+	/*
+	 * Return all rules set by user
+	 */
+	public Map<String,List<Float>> getRules();
+	
+	public void addRule(String nodetuple,Float req,Float cap);
+	
+	public void clearRule();
 }

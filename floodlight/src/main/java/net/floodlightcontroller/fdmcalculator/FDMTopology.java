@@ -39,14 +39,22 @@ class FDMTopology {
 	
 	Integer msgLen = 1;
 		
-	public FDMTopology(Integer msgLen, Map<DatapathId, Set<Link>> topLinks) {
+	public FDMTopology(Integer msgLen, Map<DatapathId, Set<Link>> topLinks,Map<String,List<Float>> rule) {
 		
 		ArrayList<CustomizedLink> cusLinks = new ArrayList<CustomizedLink>();
 		invertlinkmap = new HashMap<CustomizedLink,Integer>();
 		for(DatapathId s:topLinks.keySet()){
 			for(Link link:topLinks.get(s)){
 				int currentIndex = cusLinks.size();
-				CustomizedLink cuslink = new CustomizedLink(link,Float.MAX_VALUE,0.0f);
+				String SwitchTuple = link.getSrc().toString()+'-'+link.getSrcPort().toString()+'-'+
+										link.getDst().toString()+'-'+link.getDstPort();
+				CustomizedLink cuslink = null;
+				if(rule.containsKey(SwitchTuple)){
+					cuslink = new CustomizedLink(link,rule.get(SwitchTuple).get(1),rule.get(SwitchTuple).get(0));
+				}
+				else{
+					cuslink = new CustomizedLink(link,Float.MAX_VALUE,0.0f);
+				}
 				cusLinks.add(cuslink);
 				//System.out.println(cuslink.toString());
 				this.invertlinkmap.put(cuslink, currentIndex);

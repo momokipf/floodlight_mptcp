@@ -55,7 +55,7 @@ public class LinksResource extends ServerResource {
                 get(ILinkDiscoveryService.class.getCanonicalName());
         Map<Link, LinkInfo> links = new HashMap<Link, LinkInfo>();
         Set<LinkWithType> returnLinkSet = new HashSet<LinkWithType>();
-        System.out.println("rest server response here /LinksResource");
+        //System.out.println("rest server response here /LinksResource");
         if (ld != null) {
             links.putAll(ld.getLinks());
             for (Link link: links.keySet()) {
@@ -97,6 +97,9 @@ public class LinksResource extends ServerResource {
         }
         return returnLinkSet;
     }
+    
+    /*
+    This part implement in FDMmodule;
     
     
     @Post
@@ -174,7 +177,7 @@ public class LinksResource extends ServerResource {
                     	System.out.println("here is a link match");
                     	link.setCapacity(cap);
                     }
-                    Link otherLink = new Link(dst, dstPort, src, srcPort, U64.ZERO /* not important in lookup */);
+                    Link otherLink = new Link(dst, dstPort, src, srcPort, U64.ZERO );
                     LinkInfo otherInfo = links.get(otherLink);
                     LinkType otherType = null;
                     if (otherInfo != null)
@@ -205,5 +208,5 @@ public class LinksResource extends ServerResource {
 		}
 		return returnLinkSet;
     }
-    
+    */
 }

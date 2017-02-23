@@ -20,14 +20,15 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LDUpdate;
 import net.floodlightcontroller.linkdiscovery.Link;
+import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.topology.ITopologyManagerBackend;
 import net.floodlightcontroller.topology.ITopologyListener;
 import net.floodlightcontroller.topology.ITopologyService;
-import net.floodlightcontroller.topology.TopologyInstance;
+import net.floodlightcontroller.fdmcalculator.Web.FdmWebRoutable;
+//import net.floodlightcontroller.topology.TopologyInstance;
 
 public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, IFloodlightModule {
 
@@ -36,7 +37,10 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 	// Protected variables we'll be using
 	protected ITopologyService topologyService;		// Topology service that we'll be calling
 
+	protected IRestApiService restApiService;
+	
 	protected static ITopologyManagerBackend tm;
+	
 	
 	private Map<String,Set<Path>> currentuser;
 	
@@ -44,6 +48,7 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 	
 	private Map<Link, Float> globalLinkFlows;
 	
+	protected Map<String,List<Float>> rule = new HashMap<String,List<Float>>();
 	
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getModuleServices() {
@@ -66,8 +71,9 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 		Collection<Class<? extends IFloodlightService>> l = 
 				new ArrayList<Class<? extends IFloodlightService>>();
 		l.add(ITopologyService.class);
-		log.info("getModuleDependencies");
-
+		l.add(IRestApiService.class);
+		//log.info("getModuleDependencies");
+		
 		return l;
 	}
 
@@ -79,6 +85,7 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 		topologyService.addListener(FDMCalculator.this);
 		//tm = (ITopologyManagerBackend)context.getServiceImpl(ITopologyService.class);
 		//buildTopology();
+		this.restApiService = context.getServiceImpl(IRestApiService.class);
 		log.info("init");
 
 	}
@@ -87,6 +94,7 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 	public void startUp(FloodlightModuleContext context) 
 			throws FloodlightModuleException {
 		// TODO Auto-generated method stub
+		this.restApiService.addRestletRoutable(new FdmWebRoutable());
 		log.info("rebuild topology");
 	}
 
@@ -133,6 +141,27 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 		this.currentInstance.addPathtoTopology(tmp);
 	}
 	
+	@Override
+	public Map<String,List<Float>> getRules(){
+		return rule;
+	}
+	
+	@Override
+	public void addRule(String nodetuple,Float req,Float cap){
+		if(this.rule!=null){
+			List<Float> list = new ArrayList<Float>();
+			list.add(req);list.add(cap);
+			rule.put(nodetuple,list);
+		}
+	}
+	
+	@Override
+	public void clearRule(){
+		if(rule!=null){
+			rule.clear();
+		}
+	}
+	
 	public Float getFlowBW(IOFSwitch currentSwitch, OFPort currentPort,IOFSwitch nextSwitch, OFPort nextPort) {
 		U64 latency = U64.of(0L);
 		
@@ -143,6 +172,8 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 		return globalLinkFlows.get(link);
 	}
 
+	
+	
 	
 	/**
 	 * Main function for doing FDM
@@ -163,7 +194,7 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 		// Variables we need
 		//Map<DatapathId, Set<Link>> linkMap = tm.getCurrentTopologyInstance(
 		//Set<DatapathId> switches = tm.getCurrentTopologyInstance().getSwitches();
-			currentInstance = new FDMTopology(1,this.topologyService.getAllLinks());
+			currentInstance = new FDMTopology(1,this.topologyService.getAllLinks(),rule);
 	}
 
 	

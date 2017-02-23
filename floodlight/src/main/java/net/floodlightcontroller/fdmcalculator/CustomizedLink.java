@@ -17,7 +17,7 @@ public class CustomizedLink extends Link{
 	 Now, the attribute of capacity is implemented in the class <@Links>
 	 */
 	
-	//private float capacity = Float.POSITIVE_INFINITY;
+	private float capacity = Float.POSITIVE_INFINITY;
 	private Link linkattribute = null;
 	
 	private float requirement;// = 2.0f;
@@ -39,15 +39,15 @@ public class CustomizedLink extends Link{
 	}
 
 
-	/*
-	public void setcapaity(float f){
-		
+	
+	public void setcapaity(float cap){
+		this.capacity = cap;
 	}
 	
-	public float getcpacity(){
-		return this.getCapacity();
+	public float getCapacity(){
+		return this.capacity;
 	}
-	*/
+	
 	
 	
 	
@@ -65,6 +65,7 @@ public class CustomizedLink extends Link{
     public String toString() {
 		return "Customized"+linkattribute.toString()+'\n'+
 				"Customized Field [ requirement="+ this.requirement+
+				"capacity=" + this.capacity+
 				"]";
     }
 	

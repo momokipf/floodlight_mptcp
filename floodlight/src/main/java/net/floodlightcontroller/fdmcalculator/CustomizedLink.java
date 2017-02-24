@@ -22,7 +22,7 @@ public class CustomizedLink extends Link{
 	
 	private float requirement;// = 2.0f;
 	//public float globalflow;
-	public float currentlinklength;
+	public float currentlinklength =Float.POSITIVE_INFINITY;
 	public float currentextremalflow;
 	
 	public CustomizedLink(Link link,Float cap,Float req){
@@ -61,6 +61,9 @@ public class CustomizedLink extends Link{
 		return this.requirement;
 	}
 	
+	// public U64 getLatency() {
+ //    	return this.linkattribute.getLatency();
+ //    }
 	
 	@Override
     public String toString() {

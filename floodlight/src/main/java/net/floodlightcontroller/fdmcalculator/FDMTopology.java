@@ -30,6 +30,7 @@ class FDMTopology {
 	private int switchesnum;
 	//private Set<CustomizedLink> linkset;// = new HashSet<CustomizedLink>();
 	private Map<CustomizedLink,Integer> invertlinkmap;
+
 	private Map<PathId,List<LinkedList<Integer>>> adjlinkfromswitch;  // Assume one allocation per node
 
 	private Map<String,CustomizedLink> cuslinksmapping;
@@ -89,6 +90,7 @@ class FDMTopology {
 			else{
 				ll = new ArrayList<LinkedList<Integer>>();
 			}
+
 			LinkedList<Integer> l = new LinkedList<Integer>();
 
 			for(int i=1 ; i < nstlist.size()-1; i+=2){
@@ -110,6 +112,8 @@ class FDMTopology {
 				}
 			}
 			ll.add(l);
+			log.info(ll.toString());
+			adjlinkfromswitch.put(path.getId(),ll);
 		}
 		
 	}

@@ -140,6 +140,9 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 		tmp.add(p);
 		if(currentInstance!=null)
 			this.currentInstance.addPathtoTopology(tmp);
+
+		//for test
+		calculateFDM();
 	}
 	
 	@Override

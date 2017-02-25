@@ -11,6 +11,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +36,7 @@ class FDMTopology {
 
 	private Map<String,CustomizedLink> cuslinksmapping;
 	
+	
 	//private Float[] req;
 	
 	Float total_requirement = 0.0f;
@@ -42,10 +44,10 @@ class FDMTopology {
 	
 	Integer msgLen = 1;
 		
-	public FDMTopology(Integer msgLen, Map<DatapathId, Set<Link>> topLinks,Map<String,List<Float>> rule) {
+	public FDMTopology(Integer msgLen, Map<DatapathId, Set<Link>> topLinks,Map<String,List<Float>> rule,Map<DatapathId,OFPort> edges) {
 		
-		ArrayList<CustomizedLink> cusLinks = new ArrayList<CustomizedLink>();
-		Map<String,CustomizedLink> linksmapping = new HashMap<String,CustomizedLink>();
+		allLinks = new ArrayList<CustomizedLink>();
+		cuslinksmapping = new HashMap<String,CustomizedLink>();
 
 		//invertlinkmap = new HashMap<CustomizedLink,Integer>();
 
@@ -56,66 +58,102 @@ class FDMTopology {
 										link.getDst().toString()+'-'+link.getDstPort();
 				CustomizedLink cuslink = null;
 				if(rule.containsKey(switchTuple)){
-					log.info("find the rules");
+					log.info("FDMTopology:find the rules");
 					cuslink = new CustomizedLink(link,rule.get(switchTuple).get(1),rule.get(switchTuple).get(0));
 				}
 				else{
 					//log.info("failed to find the rules");
 					cuslink = new CustomizedLink(link,Float.MAX_VALUE,0.0f);
 				}
-				cusLinks.add(cuslink);
-				linksmapping.put(switchTuple,cuslink);
+				allLinks.add(cuslink);
+				cuslinksmapping.put(switchTuple,cuslink);
 				//System.out.println(cuslink.toString());
 				//this.invertlinkmap.put(cuslink, currentIndex);
 			}
+			if(edges.keySet().contains(s)){
+				String switchTuple = s.toString()+edges.get(s).toString()+s.toString()+edges.get(s).toString();
+				CustomizedLink cuslink = null;
+				if(rule.containsKey(switchTuple)){
+					log.info("FDMTopology: source find the rules");
+					cuslink = new CustomizedLink(new Link(s,edges.get(s),s,edges.get(s),U64.of(0L)),rule.get(s).get(1),rule.get(s).get(0));
+				}
+				else{
+					cuslink = new CustomizedLink(new Link(s,edges.get(s),s,edges.get(s),U64.of(0L)),Float.MAX_VALUE,0.0f);
+				}
+				allLinks.add(cuslink);
+				cuslinksmapping.put(switchTuple, cuslink);
+			}
 		}
+	
+		
 		switchesnum = topLinks.keySet().size();
 		adjlinkfromswitch = new HashMap<PathId,List<LinkedList<Integer>>>();
-		allLinks = cusLinks;
-		cuslinksmapping = linksmapping;
 		//initRequirements();
 	}
 	
 	
 	
-	public void addPathtoTopology(List<Path> paths){
+	public void addPathstoTopology(List<Path> paths){
 		
 		for(Path path:paths){
-			List<NodePortTuple> nstlist = path.getPath();
-			ArrayList<LinkedList<Integer>> ll = null;
-			log.info(path.toString());
-			if(this.adjlinkfromswitch.containsKey(path.getId())){
-				ll = (ArrayList<LinkedList<Integer>>)adjlinkfromswitch.get(path.getId());
-			}
-			else{
-				ll = new ArrayList<LinkedList<Integer>>();
-			}
-
-			LinkedList<Integer> l = new LinkedList<Integer>();
-
-			for(int i=1 ; i < nstlist.size()-1; i+=2){
-
-				String switchTuple = nstlist.get(i).getNodeId().toString()+'-'+nstlist.get(i).getPortId().toString()+'-'+nstlist.get(i+1).getNodeId().toString()+'-'+nstlist.get(i+1).getPortId().toString();
-				if(cuslinksmapping.containsKey(switchTuple)){
-					CustomizedLink link =cuslinksmapping.get(switchTuple);
-					int index = allLinks.indexOf(link); 
-					if(i==1){
-						link.setrequirement(2.0f);
-						this.total_requirement +=2.0f;
-					}
-					log.info("find the link"+ link.toString() );
-					l.addLast(index);
-				}
-				else{
-					//System.out.println("Cannot find "+switchTuple);
-					break;
-				}
-			}
-			ll.add(l);
-			log.info(ll.toString());
-			adjlinkfromswitch.put(path.getId(),ll);
+			addPathtoTopology(path);
 		}
 		
+	}
+	
+	
+	public void addPathtoTopology(Path path){
+		List<NodePortTuple> nstlist = path.getPath();
+		ArrayList<LinkedList<Integer>> ll = null;
+		log.info(path.toString());
+		if(this.adjlinkfromswitch.containsKey(path.getId())){
+			ll = (ArrayList<LinkedList<Integer>>)adjlinkfromswitch.get(path.getId());
+		}
+		else{
+			ll = new ArrayList<LinkedList<Integer>>();
+		}
+
+		LinkedList<Integer> l = new LinkedList<Integer>();
+
+		//check source 
+		String switchTuple = nstlist.get(0).getNodeId().toString()+'-'+nstlist.get(0).getPortId().toString()+'-'+nstlist.get(0).getNodeId().toString()+'-'+nstlist.get(0).getPortId().toString();
+		if(cuslinksmapping.containsKey(switchTuple)){
+			CustomizedLink link = cuslinksmapping.get(switchTuple);
+			int index = allLinks.indexOf(link);
+			log.info("addPathtoTopology:find the source"+ link.toString() );
+			allLinks.set(index, link);
+			l.addLast(index);
+		}
+		for(int i=1 ; i < nstlist.size()-1; i+=2){
+
+			switchTuple = nstlist.get(i).getNodeId().toString()+'-'+nstlist.get(i).getPortId().toString()+'-'+nstlist.get(i+1).getNodeId().toString()+'-'+nstlist.get(i+1).getPortId().toString();
+			if(cuslinksmapping.containsKey(switchTuple)){
+				CustomizedLink link =cuslinksmapping.get(switchTuple);
+				int index = allLinks.indexOf(link); 
+				log.debug("addPathtoTopology:find the link"+ link.toString() );
+				allLinks.set(index, link);
+				l.addLast(index);
+				log.debug("store? addPathtoTopology:find the link"+ allLinks.get(index));
+			}
+			else{
+				//System.out.println("Cannot find "+switchTuple);
+				return;
+			}
+		}
+		switchTuple = nstlist.get(nstlist.size()-1).getNodeId().toString()+'-'+nstlist.get(nstlist.size()-1).getPortId().toString()+
+				  '-'+nstlist.get(nstlist.size()-1).getNodeId().toString()+'-'+nstlist.get(nstlist.size()-1).getPortId().toString();
+		if(cuslinksmapping.containsKey(switchTuple)){
+			CustomizedLink link = cuslinksmapping.get(switchTuple);
+			int index = allLinks.indexOf(link);
+			log.info("addPathtoTopology:find the source"+ link.toString() );
+			allLinks.set(index, link);
+			l.addLast(index);
+		}
+		
+		
+		ll.add(l);
+		log.info(ll.toString());
+		adjlinkfromswitch.put(path.getId(),ll);
 	}
 	
 	private void initRequirements(){
@@ -153,7 +191,8 @@ class FDMTopology {
 			CustomizedLink link = cuslinksmapping.get(nodeTuple);
 			link.setCapacity(cap);
 			link.setrequirement(req);
-			log.info("find the link"+ link.toString() );
+			
+			log.info("updateCusLink:find the link"+ link.toString() );
 		}
 		else{
 			//log.debug("Cannot find "+nodeTuple);

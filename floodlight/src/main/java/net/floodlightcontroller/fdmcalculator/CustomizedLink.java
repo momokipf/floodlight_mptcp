@@ -8,10 +8,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.projectfloodlight.openflow.types.U64;
+
 import net.floodlightcontroller.linkdiscovery.Link;
 
 
-public class CustomizedLink extends Link{
+public class CustomizedLink {
 	
 	/*
 	 Now, the attribute of capacity is implemented in the class <@Links>
@@ -22,8 +24,8 @@ public class CustomizedLink extends Link{
 	
 	private float requirement;// = 2.0f;
 	//public float globalflow;
-	public float currentlinklength =Float.POSITIVE_INFINITY;
-	public float currentextremalflow;
+	public float currentlinklength = 0;
+	//public float currentextremalflow;
 	
 	public CustomizedLink(Link link,Float cap,Float req){
 		//super();
@@ -49,7 +51,9 @@ public class CustomizedLink extends Link{
 		return this.capacity;
 	}
 	
-	
+	public U64 getLatency(){
+		return this.linkattribute.getLatency();
+	}
 	
 	
 	
@@ -65,7 +69,7 @@ public class CustomizedLink extends Link{
  //    	return this.linkattribute.getLatency();
  //    }
 	
-	@Override
+	//@Override
     public String toString() {
 		return "Customized"+linkattribute.toString()+' '+
 				"Customized Field [ requirement="+ this.requirement+
@@ -80,7 +84,7 @@ public class CustomizedLink extends Link{
     		    this.linkattribute.getDstPort().toString());
     }
 	
-	@Override
+	//@Override
     public int hashCode() {
         final int prime = 31;
         int result = 1;
@@ -92,10 +96,10 @@ public class CustomizedLink extends Link{
     }
 	 
 	public int compareTo(CustomizedLink a) {
-		return super.compareTo(a.linkattribute);
+		return this.linkattribute.compareTo(a.linkattribute);
 	}
 	
-	 @Override
+	@Override
     public boolean equals(Object obj) {
         if (this == obj)
             return true;

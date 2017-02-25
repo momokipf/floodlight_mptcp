@@ -125,7 +125,9 @@ class FlowDeviationMethod {
 			Superpose(EFlow, globalFlow, NewCap, FDMtopoinstance.getTotal_requirement(), FDMtopoinstance.getMsgLen());
 			//current delay after superposition
 			CurrentDelay = CalcDelay(globalFlow, NewCap, FDMtopoinstance.getMsgLen(), FDMtopoinstance.getTotal_requirement());
-			
+			for(Float i:globalFlow){
+				log.info(i.toString() +' ');
+			}
 			if(Aflag) {
 				Aresult = AdjustCaps(globalFlow, NewCap);
 				Aflag = (Aresult==1)?false:true;
@@ -138,9 +140,6 @@ class FlowDeviationMethod {
 		}
 		
 		if(feasible){
-			for(Float i:globalFlow){
-				log.info(i.toString() +' ');
-			}
 			//return globalFlow;
 		}
 		else{
@@ -167,6 +166,7 @@ class FlowDeviationMethod {
 //			
 //		 	System.out.print("current delay in iteration is " + CurrentDelay + "\n");
 //			count++;
+			log.info("infeasible");
 		}
 		//return getGlobalFlows(network);
 	}
@@ -188,7 +188,7 @@ class FlowDeviationMethod {
 			for(LinkedList<Integer> l:this.FDMtopoinstance.getadj().get(pid)){
 				//log.info(l.toString());
 				Float tmp_dis = calculatAlllatency(l);
-				log.info("latency : "+Float.toString(tmp_dis));
+				log.info("the path of "+ l.toString()+" latency : "+Float.toString(tmp_dis));
 				if(tmp_dis<dis){
 					dis = tmp_dis;
 					shortestPath.put(pid,l);
@@ -200,10 +200,12 @@ class FlowDeviationMethod {
 	private Float calculatAlllatency(LinkedList<Integer> path){
 		Float latency = 0.0f;
 		log.info("/*********************Start fdm calculatAlllatency*****************************/");
+		int index = 0 ;
 		for(Integer p:path){
-			CustomizedLink curlink = FDMtopoinstance.getallLinks().get(p);
+			if(index==0||index==path.size()-1)
+				continue;
+			CustomizedLink curlink = FDMtopoinstance.getCustomizedLink(p);
 			log.info('('+Integer.toString(p)+')' + ' '+curlink.toString());
-			log.info("latency: " + Integer.toString(curlink.getLatency().getLength() ) );
 			latency += curlink.currentlinklength + curlink.getLatency().getValue(); 
 		}
 		return latency;
@@ -255,7 +257,8 @@ class FlowDeviationMethod {
 			Flow[i] = 0.0f;
 		}
 		for(PathId pid: this.shortestPath.keySet()){
-			float req = FDMtopoinstance.getCustomizedLink(0).getrequirement();
+			float req = FDMtopoinstance.getCustomizedLink(shortestPath.get(pid).get(0)).getrequirement();
+			log.info("retrieve req from the head: "+Float.toString(req));
 			for(Integer index:shortestPath.get(pid)){
 				Flow[index]+=req;
 			}

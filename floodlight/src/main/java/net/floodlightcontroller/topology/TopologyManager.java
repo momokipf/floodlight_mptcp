@@ -252,6 +252,22 @@ ITopologyManagerBackend, ILinkDiscoveryListener, IOFMessageListener {
 
         return dpidLinks;
     }
+    @Override
+    public Map<DatapathId,OFPort> getAllEdge(){
+    	Map<DatapathId,OFPort> edgeswitch = new HashMap<DatapathId,OFPort>();
+    	TopologyInstance ti = getCurrentInstance();
+    	Set<DatapathId> switches = ti.getSwitches();
+    	for(DatapathId s:switches){
+    		if(this.switchPortLinks.get(s)==null) continue;
+    		for(OFPort p:switchPorts.get(s)){
+    			if(ti.isEdge(s, p)){
+    				edgeswitch.put(s,p);
+    				break;
+    			}
+    		}
+    	}
+    	return edgeswitch;
+    }
 
     @Override
     public boolean isEdge(DatapathId sw, OFPort p){

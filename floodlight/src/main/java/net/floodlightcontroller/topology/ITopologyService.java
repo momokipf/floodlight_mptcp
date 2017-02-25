@@ -230,6 +230,13 @@ public interface ITopologyService extends IFloodlightService  {
 	public Map<DatapathId, Set<Link>> getAllLinks();
 	
 	/**
+	 * Get all Edge switch dpid
+	 * 
+	 * @return Set<DatapathId>
+	 */
+	public Map<DatapathId,OFPort> getAllEdge();
+	
+	/**
 	 * Gets a list of ports on a given switch that are part of known links.
 	 * @param sw
 	 * @return

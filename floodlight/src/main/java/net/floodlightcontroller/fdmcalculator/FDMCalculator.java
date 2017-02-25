@@ -24,6 +24,7 @@ import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LDUpdate;
 import net.floodlightcontroller.linkdiscovery.Link;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.Path;
+import net.floodlightcontroller.routing.PathId;
 import net.floodlightcontroller.topology.ITopologyManagerBackend;
 import net.floodlightcontroller.topology.ITopologyListener;
 import net.floodlightcontroller.topology.ITopologyService;
@@ -42,7 +43,7 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 	protected static ITopologyManagerBackend tm;
 	
 	
-	private Map<String,Set<Path>> currentuser;
+	private Map<PathId,Set<Path>> currentuser = new HashMap<PathId,Set<Path>>();
 	
 	protected FDMTopology currentInstance;
 	
@@ -135,13 +136,23 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 	
 	@Override
 	public void addPath(Path p){
-		
-		ArrayList<Path> tmp = new ArrayList<Path>();
-		tmp.add(p);
-		if(currentInstance!=null)
-			this.currentInstance.addPathtoTopology(tmp);
-
-		//for test
+		if(currentInstance==null)
+			return;
+		if(this.currentuser.containsKey(p.getId())){
+			Set<Path> paths = currentuser.get(p.getId());
+			if(!paths.contains(p)){
+				paths.add(p);
+			}
+			else{
+				return;
+			}
+		}
+		else{
+			Set<Path> paths = new HashSet<Path>();
+			paths.add(p);
+			currentuser.put(p.getId(),paths);
+		}
+		this.currentInstance.addPathtoTopology(p);
 		calculateFDM();
 	}
 	
@@ -202,7 +213,7 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 		// Variables we need
 		//Map<DatapathId, Set<Link>> linkMap = tm.getCurrentTopologyInstance(
 		//Set<DatapathId> switches = tm.getCurrentTopologyInstance().getSwitches();
-			currentInstance = new FDMTopology(1,this.topologyService.getAllLinks(),rule);
+			currentInstance = new FDMTopology(1,this.topologyService.getAllLinks(),rule,topologyService.getAllEdge());
 	}
 
 	
@@ -212,10 +223,10 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 		for(DatapathId pathid:dpidLinks.keySet()){
 			for(Link l:dpidLinks.get(pathid)){
 				if(dpidLinks.containsKey(pathid)) {
-                    dpidLinks.get(pathid).add(new CustomizedLink(l,Float.MAX_VALUE,2.0f));
+                    //dpidLinks.get(pathid).add(new CustomizedLink(l,Float.MAX_VALUE,2.0f));
                 }
                 else {
-                    dpidLinks.put(pathid,new HashSet<Link>(Arrays.asList(new CustomizedLink(l,Float.MAX_VALUE,2.0f))));
+                    //dpidLinks.put(pathid,new HashSet<Link>(Arrays.asList(new CustomizedLink(l,Float.MAX_VALUE,2.0f))));
                 }
 			}
 		}

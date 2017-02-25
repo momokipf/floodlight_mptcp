@@ -793,7 +793,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                                         
                                         //log.info("rate:{}",dm.createMeter(currentSwitch, currentPort, nextSwitch, nextPort));
                                         //dm.bindMeterWithFlow(srcPort, destcpPort, srcIp2, currentSwitch, srctcpPort, newPath);
-
+                                        dm.addpathtoFDMmodule(newPath);
 
                                         pushRoute(newPath, m, pi, sw.getId(), cookie, 
                                             cntx, requestFlowRemovedNotifn,
@@ -904,7 +904,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                     //DropMeter dm = new DropMeter();
                     //log.info("rate:{}",dm.createMeter(currentSwitch, currentPort, nextSwitch, nextPort));
                     //dm.bindMeterWithFlow(srcPort, destcpPort, srcIp2, currentSwitch, srctcpPort, p);
-
+                    dm.addpathtoFDMmodule(p);
                     pushRoute(uniquepathcache.get(ports), m, pi, sw.getId(), cookie,
                         cntx, requestFlowRemovedNotifn,OFFlowModCommand.MODIFY);
                     for (NodePortTuple npt : uniquepathcache.get(ports).getPath()) {

@@ -118,22 +118,32 @@ public class FdmReq_CapResource extends ServerResource{
     	if(src_sw==null||src_port==null||dst_sw==null||dst_port==null){
     		return "Invalid rule, set rules failed\n";
     	}
-
-		String rule_key = src_sw+'-'+src_port+'-'+dst_sw+'-'+dst_port;
-		System.out.println(rule_key);
-		if(fds.getRules().containsKey(rule_key)){
-			// if(fds.getRules().get(rule_key).get(0)!= req){
-
-			// }
-			// if(fds.getRules().get(rule_key).get(1)!= cap){
-
-			// }
-			return "Rule already set in fdm";
-		}
-		else{
-		fds.addRule(rule_key,req,cap);
-			return "Rule set successfully";
-		}
+//    	if(src_sw.equals(dst_sw)){
+//    		String rule_key = src_sw+'-'+'?'+'-'+dst_sw+'-'+'?';
+//    		if(fds.getRules().containsKey(rule_key)){
+//    			return "Source rule already set in fdm";
+//    		}
+//    		else{
+//    			fds.addRule(rule_key, req, cap);
+//    			return "Source rule set successfully";
+//    		}
+//    	}
+//    	else{
+    		String rule_key = src_sw+'-'+src_port+'-'+dst_sw+'-'+dst_port;
+    		if(fds.getRules().containsKey(rule_key)){
+				// if(fds.getRules().get(rule_key).get(0)!= req){
+	
+				// }
+				// if(fds.getRules().get(rule_key).get(1)!= cap){
+	
+				// }
+				return "Rule already set in fdm";
+			}
+			else{
+				fds.addRule(rule_key,req,cap);
+				return "Rule set successfully";
+			}
+    	//}
 		
 	}
 }

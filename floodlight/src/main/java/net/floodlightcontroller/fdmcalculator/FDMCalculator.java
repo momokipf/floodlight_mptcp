@@ -50,6 +50,8 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 	private Map<Link, Float> globalLinkFlows;
 	
 	protected Map<String,List<Float>> rule = new HashMap<String,List<Float>>();
+
+	private boolean fdmactive = true;
 	
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getModuleServices() {
@@ -96,6 +98,7 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 			throws FloodlightModuleException {
 		// TODO Auto-generated method stub
 		this.restApiService.addRestletRoutable(new FdmWebRoutable());
+		buildTopology();
 		log.info("rebuild topology");
 	}
 
@@ -152,7 +155,7 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 			paths.add(p);
 			currentuser.put(p.getId(),paths);
 		}
-		this.currentInstance.addPathtoTopology(p);
+		this.currentInstance.addPathtoTopology(p,rule);
 		calculateFDM();
 	}
 	
@@ -213,7 +216,8 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 		// Variables we need
 		//Map<DatapathId, Set<Link>> linkMap = tm.getCurrentTopologyInstance(
 		//Set<DatapathId> switches = tm.getCurrentTopologyInstance().getSwitches();
-			currentInstance = new FDMTopology(1,this.topologyService.getAllLinks(),rule,topologyService.getAllEdge());
+			log.info("buildTopology "+this.topologyService.getBlockedPorts().toString());
+			currentInstance = new FDMTopology(1,this.topologyService.getAllLinks(),rule,this.topologyService.getAllEdge());
 	}
 
 	

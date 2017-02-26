@@ -45,10 +45,11 @@ class FDMTopology {
 	Integer msgLen = 1;
 		
 	public FDMTopology(Integer msgLen, Map<DatapathId, Set<Link>> topLinks,Map<String,List<Float>> rule,Map<DatapathId,OFPort> edges) {
-		
+		log.debug("FDMTopology init");
 		allLinks = new ArrayList<CustomizedLink>();
 		cuslinksmapping = new HashMap<String,CustomizedLink>();
-
+		log.info("FDMTopology: link.size()=" + Integer.toString(topLinks.size())); 
+		log.info("FDMTopology: edges.size()=" + Integer.toString(edges.size())); 
 		//invertlinkmap = new HashMap<CustomizedLink,Integer>();
 
 		for(DatapathId s:topLinks.keySet()){
@@ -56,30 +57,36 @@ class FDMTopology {
 				//int currentIndex = cusLinks.size();
 				String switchTuple = link.getSrc().toString()+'-'+link.getSrcPort().toString()+'-'+
 										link.getDst().toString()+'-'+link.getDstPort();
-				CustomizedLink cuslink = null;
-				if(rule.containsKey(switchTuple)){
-					log.info("FDMTopology:find the rules");
-					cuslink = new CustomizedLink(link,rule.get(switchTuple).get(1),rule.get(switchTuple).get(0));
+				if(!cuslinksmapping.containsKey(switchTuple))  // remove duplicate
+				{
+					CustomizedLink cuslink = null;
+					if(rule.containsKey(switchTuple)){
+						log.debug("FDMTopology:find the rules");
+						cuslink = new CustomizedLink(link,rule.get(switchTuple).get(1),rule.get(switchTuple).get(0));
+					}
+					else{
+						//log.info("failed to find the rules");
+						cuslink = new CustomizedLink(link,Float.MAX_VALUE,0.0f);
+					}
+					allLinks.add(cuslink);
+					log.info('('+Integer.toString(allLinks.size())+')' + ' '+cuslink);
+					cuslinksmapping.put(switchTuple,cuslink);
+					//System.out.println(cuslink.toString());
+					//this.invertlinkmap.put(cuslink, currentIndex);
 				}
-				else{
-					//log.info("failed to find the rules");
-					cuslink = new CustomizedLink(link,Float.MAX_VALUE,0.0f);
-				}
-				allLinks.add(cuslink);
-				cuslinksmapping.put(switchTuple,cuslink);
-				//System.out.println(cuslink.toString());
-				//this.invertlinkmap.put(cuslink, currentIndex);
 			}
 			if(edges.keySet().contains(s)){
 				String switchTuple = s.toString()+edges.get(s).toString()+s.toString()+edges.get(s).toString();
 				CustomizedLink cuslink = null;
 				if(rule.containsKey(switchTuple)){
-					log.info("FDMTopology: source find the rules");
+					log.debug("FDMTopology: source find the rules");
 					cuslink = new CustomizedLink(new Link(s,edges.get(s),s,edges.get(s),U64.of(0L)),rule.get(s).get(1),rule.get(s).get(0));
 				}
 				else{
+					log.debug("FDMTopology: source cannot find the rules");
 					cuslink = new CustomizedLink(new Link(s,edges.get(s),s,edges.get(s),U64.of(0L)),Float.MAX_VALUE,0.0f);
 				}
+				log.info('('+Integer.toString(allLinks.size())+')' + "source"+ ' '+cuslink);
 				allLinks.add(cuslink);
 				cuslinksmapping.put(switchTuple, cuslink);
 			}
@@ -93,16 +100,16 @@ class FDMTopology {
 	
 	
 	
-	public void addPathstoTopology(List<Path> paths){
+	public void addPathstoTopology(List<Path> paths,Map<String,List<Float>> rule){
 		
 		for(Path path:paths){
-			addPathtoTopology(path);
+			addPathtoTopology(path,rule);
 		}
 		
 	}
 	
 	
-	public void addPathtoTopology(Path path){
+	public void addPathtoTopology(Path path,Map<String,List<Float>> rule){
 		List<NodePortTuple> nstlist = path.getPath();
 		ArrayList<LinkedList<Integer>> ll = null;
 		log.info(path.toString());
@@ -124,6 +131,24 @@ class FDMTopology {
 			allLinks.set(index, link);
 			l.addLast(index);
 		}
+		else{
+			CustomizedLink cuslink = null;
+			if(rule.containsKey(switchTuple)){
+				log.debug("FDMTopology: source find the rules");
+				cuslink = new CustomizedLink(new Link(nstlist.get(0).getNodeId(),nstlist.get(0).getPortId(),nstlist.get(0).getNodeId(),nstlist.get(0).getPortId(),U64.of(0L)),
+					rule.get(nstlist.get(0).getNodeId()).get(1),rule.get(nstlist.get(0).getNodeId()).get(0));
+			}
+			else{
+				log.debug("FDMTopology: source cannot find the rules");
+				cuslink = new CustomizedLink(new Link(nstlist.get(0).getNodeId(),nstlist.get(0).getPortId(),nstlist.get(0).getNodeId(),nstlist.get(0).getPortId(),U64.of(0L)),
+						Float.MAX_VALUE,0.0f);
+			}
+			log.info('('+Integer.toString(allLinks.size())+')' + "source"+ ' '+cuslink);
+			int index = allLinks.size();
+			allLinks.add(cuslink);
+			cuslinksmapping.put(switchTuple, cuslink);
+			l.addLast(index);
+		}
 		for(int i=1 ; i < nstlist.size()-1; i+=2){
 
 			switchTuple = nstlist.get(i).getNodeId().toString()+'-'+nstlist.get(i).getPortId().toString()+'-'+nstlist.get(i+1).getNodeId().toString()+'-'+nstlist.get(i+1).getPortId().toString();
@@ -137,6 +162,8 @@ class FDMTopology {
 			}
 			else{
 				//System.out.println("Cannot find "+switchTuple);
+
+
 				return;
 			}
 		}
@@ -149,7 +176,24 @@ class FDMTopology {
 			allLinks.set(index, link);
 			l.addLast(index);
 		}
-		
+		else{
+			CustomizedLink cuslink = null;
+			if(rule.containsKey(switchTuple)){
+				log.debug("FDMTopology: source find the rules");
+				cuslink = new CustomizedLink(new Link(nstlist.get(nstlist.size()-1).getNodeId(),nstlist.get(nstlist.size()-1).getPortId(),nstlist.get(nstlist.size()-1).getNodeId(),nstlist.get(nstlist.size()-1).getPortId(),U64.of(0L)),
+							rule.get(nstlist.get(nstlist.size()-1).getNodeId()).get(1),rule.get(nstlist.get(nstlist.size()-1).getNodeId()).get(0));
+			}
+			else{
+				log.debug("FDMTopology: source cannot find the rules");
+				cuslink = new CustomizedLink(new Link(nstlist.get(nstlist.size()-1).getNodeId(),nstlist.get(nstlist.size()-1).getPortId(),nstlist.get(nstlist.size()-1).getNodeId(),nstlist.get(nstlist.size()-1).getPortId(),U64.of(0L)),
+						Float.MAX_VALUE,0.0f);
+			}
+			log.info('('+Integer.toString(allLinks.size())+')' + "source"+ ' '+cuslink);
+			int index = allLinks.size();
+			allLinks.add(cuslink);
+			cuslinksmapping.put(switchTuple, cuslink);
+			l.addLast(index);
+		}
 		
 		ll.add(l);
 		log.info(ll.toString());

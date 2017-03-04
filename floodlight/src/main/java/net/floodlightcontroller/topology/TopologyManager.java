@@ -257,9 +257,11 @@ ITopologyManagerBackend, ILinkDiscoveryListener, IOFMessageListener {
     	Map<DatapathId,OFPort> edgeswitch = new HashMap<DatapathId,OFPort>();
     	TopologyInstance ti = getCurrentInstance();
     	Set<DatapathId> switches = ti.getSwitches();
+        log.info("getAllEdge started:getSwitches.size " + Integer.toString(switches.size()));
     	for(DatapathId s:switches){
-    		if(this.switchPortLinks.get(s)==null) continue;
+    		//if(this.switchPortLinks.get(s)==null) continue;
     		for(OFPort p:switchPorts.get(s)){
+                log.info("Check Edges : " + s.toString()+ ':' + p.toString());
     			if(ti.isEdge(s, p)){
     				edgeswitch.put(s,p);
     				break;

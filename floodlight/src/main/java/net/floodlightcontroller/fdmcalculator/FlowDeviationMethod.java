@@ -42,6 +42,7 @@ class FlowDeviationMethod {
 	private Float total_req ;
 	
 	public FlowDeviationMethod(FDMTopology FDMtopoinstance) {
+		log.info("/*********************Start fdm algorithm*****************************/");
 		this.FDMtopoinstance = FDMtopoinstance;
 		NewCap = new Float[FDMtopoinstance.getNoLinks()];
 		globalFlow = new Float[FDMtopoinstance.getNoLinks()];
@@ -97,7 +98,7 @@ class FlowDeviationMethod {
 			EFlow[i] = 0.0f;
 		}
 
-		log.info("/*********************Start fdm algorithm*****************************/");
+		//log.info("/*********************Start fdm algorithm*****************************/");
 		
 		Float PreviousDelay = Float.POSITIVE_INFINITY;
 //		Integer i, n;

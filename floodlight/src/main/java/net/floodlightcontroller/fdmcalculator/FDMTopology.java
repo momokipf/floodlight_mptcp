@@ -47,10 +47,12 @@ class FDMTopology {
 	Integer msgLen = 1;
 		
 	public FDMTopology(Integer msgLen, Map<DatapathId, Set<Link>> topLinks,Map<String,List<Float>> rule,Map<DatapathId,OFPort> edges) {
-		
+		log.debug("FDMTopology init");
 		allLinks = new ArrayList<CustomizedLink>();
 		cuslinksmapping = new HashMap<String,CustomizedLink>();
 		this.rule = rule;
+		log.info("FDMTopology: link.size()=" + Integer.toString(topLinks.size())); 
+		log.info("FDMTopology: edges.size()=" + Integer.toString(edges.size())); 
 		//invertlinkmap = new HashMap<CustomizedLink,Integer>();
 
 		
@@ -59,7 +61,7 @@ class FDMTopology {
 				//int currentIndex = cusLinks.size();
 				String switchTuple = link.getSrc().toString()+'-'+link.getSrcPort().toString()+'-'+
 										link.getDst().toString()+'-'+link.getDstPort();
-				if(!cuslinksmapping.containsKey(switchTuple)){
+				if(!cuslinksmapping.containsKey(switchTuple)){	// remove duplicate
 					CustomizedLink cuslink = null;
 					if(rule.containsKey(switchTuple)){
 						log.info("FDMTopology:find the rules");
@@ -70,21 +72,21 @@ class FDMTopology {
 						cuslink = new CustomizedLink(link);
 					}
 					allLinks.add(cuslink);
+					log.debug('('+Integer.toString(allLinks.size())+')' + ' '+cuslink);
 					cuslinksmapping.put(switchTuple,cuslink);
-					//System.out.println(cuslink.toString());
-					//this.invertlinkmap.put(cuslink, currentIndex);
 				}
 			}
 			if(edges.keySet().contains(s)){
 				String switchTuple = s.toString()+edges.get(s).toString()+s.toString()+edges.get(s).toString();
 				CustomizedLink cuslink = null;
 				if(rule.containsKey(switchTuple)){
-					log.info("FDMTopology: source find the rules");
+					log.debug("FDMTopology: source find the rules");
 					cuslink = new CustomizedLink(new Link(s,edges.get(s),s,edges.get(s),U64.of(0L)),rule.get(s).get(1),rule.get(s).get(0));
 				}
 				else{
 					cuslink = new CustomizedLink(new Link(s,edges.get(s),s,edges.get(s),U64.of(0L)));
 				}
+				log.info('('+Integer.toString(allLinks.size())+')' + "source"+ ' '+cuslink);
 				allLinks.add(cuslink);
 				cuslinksmapping.put(switchTuple, cuslink);
 			}
@@ -99,7 +101,6 @@ class FDMTopology {
 	
 	
 	public void addPathstoTopology(Set<Path> paths){
-		
 		for(Path path:paths){
 			addPathtoTopology(path);
 		}
@@ -160,6 +161,8 @@ class FDMTopology {
 			}
 			else{
 				//System.out.println("Cannot find "+switchTuple);
+
+
 				return;
 			}
 		}

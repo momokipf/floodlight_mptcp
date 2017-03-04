@@ -100,6 +100,8 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 		}
 	};
 	
+
+	private boolean fdmactive = true;
 	
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getModuleServices() {
@@ -154,6 +156,7 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 		newInstanceTask = new SingletonTask(ses,new UpdateFDMTopologyWorker());
 		newInstanceTask.reschedule(FDMCALCULATE_INTERVAL, TimeUnit.MILLISECONDS);
 		this.restApiService.addRestletRoutable(new FdmWebRoutable());
+		buildTopology();
 		log.info("rebuild topology");
 	}
 
@@ -214,14 +217,6 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 	
 	@Override 
 	public void delectPath(String pathstr,Path p){
-		if(currentInstance==null)
-			return;
-		if(activeuser.containsKey(pathstr)){
-			if(activeuser.get(pathstr).contains(p)){
-				activeuser.get(pathstr).remove(p);
-				//currentInstance.removePathTopogy(p);
-			}
-		}
 		
 	}
 	

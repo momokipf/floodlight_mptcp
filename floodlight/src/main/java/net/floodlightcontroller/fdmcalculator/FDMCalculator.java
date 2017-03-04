@@ -1,13 +1,17 @@
 package net.floodlightcontroller.fdmcalculator;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+//import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -20,12 +24,13 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LDUpdate;
 import net.floodlightcontroller.linkdiscovery.Link;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.routing.PathId;
-import net.floodlightcontroller.topology.ITopologyManagerBackend;
+import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.ITopologyListener;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.fdmcalculator.Web.FdmWebRoutable;
@@ -33,6 +38,8 @@ import net.floodlightcontroller.fdmcalculator.Web.FdmWebRoutable;
 
 public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, IFloodlightModule {
 
+	protected int FDMCALCULATE_INTERVAL = 500;
+	
 	protected static final Logger log = LoggerFactory.getLogger(FDMCalculator.class);
 
 	// Protected variables we'll be using
@@ -40,16 +47,59 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 
 	protected IRestApiService restApiService;
 	
-	protected static ITopologyManagerBackend tm;
+	protected static IThreadPoolService threadPoolService;
 	
 	
-	private Map<PathId,Set<Path>> currentuser = new HashMap<PathId,Set<Path>>();
+	//private Map<PathId,Set<Path>> currentuser = new HashMap<PathId,Set<Path>>();
+	private Map<String,Set<Path>> activeuser;
 	
 	protected FDMTopology currentInstance;
 	
-	private Map<Link, Float> globalLinkFlows;
+	private Map<Link, Float> globalLinkFlows;// need to change
 	
-	protected Map<String,List<Float>> rule = new HashMap<String,List<Float>>();
+	protected Map<String,List<Float>> rule;
+	
+	protected SingletonTask newInstanceTask;
+	
+	//Modules that get the path updates
+	protected BlockingQueue<PathUpdate> pathUpdates;
+	
+	protected class UpdateFDMTopologyWorker implements Runnable{
+		@Override
+		public void run(){
+			try{
+				/*
+				 * test version 1.0 calculate result every 0.5s;
+				 */
+				if(pathUpdates.peek()!=null){
+					calculateFDM();
+					log.info("calculate fdm" + pathUpdates.toString());
+					pathUpdates.clear();
+				}
+				
+			}
+			catch(Exception e){
+				log.error("Error in topology instance task thread");
+			}finally{
+				newInstanceTask.reschedule(FDMCALCULATE_INTERVAL, TimeUnit.MILLISECONDS);
+			}
+		}
+	}
+	
+	public class PathUpdate{
+		public static final String ADD = "add";
+		public static final String DELETE = "delect";
+		protected String pathstr;
+		protected Path p;
+		protected String op;
+		
+		public PathUpdate(String pathstr,Path p, String op){
+			this.pathstr = pathstr;
+			this.p = p;
+			this.op = op;
+		}
+	};
+	
 	
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getModuleServices() {
@@ -84,10 +134,15 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 		// Initialize our dependencies
 		topologyService = context.getServiceImpl(ITopologyService.class);
 		topologyService.addListener(FDMCalculator.this);
+		threadPoolService = context.getServiceImpl(IThreadPoolService.class);
 		//tm = (ITopologyManagerBackend)context.getServiceImpl(ITopologyService.class);
 		//buildTopology();
 		this.restApiService = context.getServiceImpl(IRestApiService.class);
-		log.info("init");
+		log.debug("FDM module init");
+		
+		activeuser = new HashMap<String,Set<Path>>();
+		rule = new HashMap<String,List<Float>>();
+		pathUpdates = new LinkedBlockingQueue<PathUpdate>();
 
 	}
 
@@ -95,6 +150,9 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 	public void startUp(FloodlightModuleContext context) 
 			throws FloodlightModuleException {
 		// TODO Auto-generated method stub
+		ScheduledExecutorService ses = threadPoolService.getScheduledExecutor();
+		newInstanceTask = new SingletonTask(ses,new UpdateFDMTopologyWorker());
+		newInstanceTask.reschedule(FDMCALCULATE_INTERVAL, TimeUnit.MILLISECONDS);
 		this.restApiService.addRestletRoutable(new FdmWebRoutable());
 		log.info("rebuild topology");
 	}
@@ -135,25 +193,36 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 	}
 	
 	@Override
-	public void addPath(Path p){
+	public void addPath(String pathstr,Path p){
 		if(currentInstance==null)
 			return;
-		if(this.currentuser.containsKey(p.getId())){
-			Set<Path> paths = currentuser.get(p.getId());
-			if(!paths.contains(p)){
-				paths.add(p);
+		if(activeuser.containsKey(pathstr)){
+			if(!activeuser.get(pathstr).contains(p)){
+				activeuser.get(pathstr).add(p);
 			}
-			else{
+			else 
 				return;
-			}
 		}
 		else{
-			Set<Path> paths = new HashSet<Path>();
-			paths.add(p);
-			currentuser.put(p.getId(),paths);
+			HashSet<Path> newset = new HashSet<Path>();
+			newset.add(p);
+			activeuser.put(pathstr, newset);
 		}
-		this.currentInstance.addPathtoTopology(p);
-		calculateFDM();
+		updatePath(pathstr,p,PathUpdate.ADD);
+		currentInstance.addPathtoTopology(p);
+	}
+	
+	@Override 
+	public void delectPath(String pathstr,Path p){
+		if(currentInstance==null)
+			return;
+		if(activeuser.containsKey(pathstr)){
+			if(activeuser.get(pathstr).contains(p)){
+				activeuser.get(pathstr).remove(p);
+				//currentInstance.removePathTopogy(p);
+			}
+		}
+		
 	}
 	
 	@Override
@@ -170,6 +239,17 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 			if(currentInstance!=null)
 				currentInstance.updateCusLink(nodetuple,req,cap);
 		}
+	}
+	
+	public void updatePath(String pathstr, Path p, String op){
+		PathUpdate up = new PathUpdate(pathstr,p,op);
+		try {
+			this.pathUpdates.put(up);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		};
+
 	}
 	
 	@Override
@@ -202,6 +282,38 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 		fdm.runFDM();
 	}
 	
+	private void updateUser(){
+		//List<PathUpdate> appliedUpdates = new ArrayList<PathUpdate>();
+		PathUpdate update = null;
+		while(this.pathUpdates.peek()!=null){
+			try{
+				update = pathUpdates.take();
+			}catch(Exception e){
+				log.error("Error reading path update");
+			}
+			switch(update.op){
+				case PathUpdate.ADD:
+					if(this.activeuser.containsKey(update.pathstr)){
+						this.activeuser.get(update.pathstr).add(update.p);
+					}
+					else{
+						Set<Path> newset = new HashSet<Path>();
+						newset.add(update.p);
+						this.activeuser.put(update.pathstr, newset);
+					}
+					log.info("Path added : "+update.pathstr);
+					break;
+				case PathUpdate.DELETE:
+					if(this.activeuser.containsKey(update.pathstr)){
+						this.activeuser.get(update.pathstr).remove(update.p);
+					}
+					log.info("Path delete : "+update.pathstr);
+					break;
+				default:
+						break;
+			}
+		}
+	}
 	/**
 	 * Build the topology in our implementation
 	 * This is needed as TopologyService keeps its topology in a very different way
@@ -213,7 +325,12 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 		// Variables we need
 		//Map<DatapathId, Set<Link>> linkMap = tm.getCurrentTopologyInstance(
 		//Set<DatapathId> switches = tm.getCurrentTopologyInstance().getSwitches();
+			log.info(this.topologyService.getBlockedPorts().toString());
 			currentInstance = new FDMTopology(1,this.topologyService.getAllLinks(),rule,topologyService.getAllEdge());
+			for(String str:activeuser.keySet()){
+				currentInstance.addPathstoTopology(activeuser.get(str));
+			}
+			
 	}
 
 	

@@ -82,7 +82,7 @@ public class DropMeter{
 	     }
 	    
 	    public void addpathtoFDMmodule(Path p){
-	    	this.fdmservice.addPath(p);
+	    	//this.fdmservice.addPath(p);
 	    }
 	    
 	    

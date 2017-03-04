@@ -39,6 +39,7 @@ class FlowDeviationMethod {
 	private Float[] EFlow; 		 //included in customizedlink 
 	//private Float[] FDlen;
 	
+	private Float total_req ;
 	
 	public FlowDeviationMethod(FDMTopology FDMtopoinstance) {
 		this.FDMtopoinstance = FDMtopoinstance;
@@ -46,7 +47,7 @@ class FlowDeviationMethod {
 		globalFlow = new Float[FDMtopoinstance.getNoLinks()];
 		EFlow = new Float[FDMtopoinstance.getNoLinks()];
 		shortestPath = new HashMap<PathId,LinkedList<Integer>>();
-
+		total_req = FDMtopoinstance.getTotal_requirement();
 		for(int i= 0; i <FDMtopoinstance.getallLinks().size();++i ){
 			log.debug('('+Integer.toString(i)+')' + ' '+FDMtopoinstance.getallLinks().get(i).toString());
 		}
@@ -112,7 +113,7 @@ class FlowDeviationMethod {
 			Aflag = false;
 		else
 			Aflag = true;
-		CurrentDelay = CalcDelay(globalFlow, NewCap,FDMtopoinstance.getMsgLen(), FDMtopoinstance.getTotal_requirement());
+		CurrentDelay = CalcDelay(globalFlow, NewCap,FDMtopoinstance.getMsgLen(), total_req);
 
 		Integer count = 0;
 		//start to run FDM
@@ -121,13 +122,15 @@ class FlowDeviationMethod {
 			SetSP();
 			LoadLinks(EFlow);
 			//previous delay based on current NewCap
-			PreviousDelay = CalcDelay(globalFlow, NewCap, FDMtopoinstance.getMsgLen(), FDMtopoinstance.getTotal_requirement());
-			Superpose(EFlow, globalFlow, NewCap, FDMtopoinstance.getTotal_requirement(), FDMtopoinstance.getMsgLen());
+			PreviousDelay = CalcDelay(globalFlow, NewCap, FDMtopoinstance.getMsgLen(), total_req);
+			Superpose(EFlow, globalFlow, NewCap, total_req, FDMtopoinstance.getMsgLen());
 			//current delay after superposition
-			CurrentDelay = CalcDelay(globalFlow, NewCap, FDMtopoinstance.getMsgLen(), FDMtopoinstance.getTotal_requirement());
+			CurrentDelay = CalcDelay(globalFlow, NewCap, FDMtopoinstance.getMsgLen(), total_req);
+			StringBuffer ss = new StringBuffer();
 			for(Float i:globalFlow){
-				log.info(i.toString() +' ');
+				ss.append(Float.toString(i)+' ');
 			}
+			log.info("Intermediat result: "+ ss.toString());
 			if(Aflag) {
 				Aresult = AdjustCaps(globalFlow, NewCap);
 				Aflag = (Aresult==1)?false:true;
@@ -140,6 +143,8 @@ class FlowDeviationMethod {
 		}
 		
 		if(feasible){
+			
+			log.info("FDM calcuate done");
 			//return globalFlow;
 		}
 		else{
@@ -188,7 +193,7 @@ class FlowDeviationMethod {
 			for(LinkedList<Integer> l:this.FDMtopoinstance.getadj().get(pid)){
 				//log.info(l.toString());
 				Float tmp_dis = calculatAlllatency(l);
-				log.info("the path of "+ l.toString()+" latency : "+Float.toString(tmp_dis));
+				//log.info("the path of "+ l.toString()+" latency : "+Float.toString(tmp_dis));
 				if(tmp_dis<dis){
 					dis = tmp_dis;
 					shortestPath.put(pid,l);
@@ -203,11 +208,16 @@ class FlowDeviationMethod {
 		int index = 0 ;
 		for(Integer p:path){
 			if(index==0||index==path.size()-1)
+			{
+				index++;
 				continue;
+			}
+			index++;
 			CustomizedLink curlink = FDMtopoinstance.getCustomizedLink(p);
-			log.info('('+Integer.toString(p)+')' + ' '+curlink.toString());
+			//log.info('('+Integer.toString(p)+')' + ' '+curlink.toString());
 			latency += curlink.currentlinklength + curlink.getLatency().getValue(); 
 		}
+		log.info(path.toString() + "latency" + Float.toString(latency));
 		return latency;
 	}
 	
@@ -274,6 +284,8 @@ class FlowDeviationMethod {
 		for(Integer i = 0; i < Flow.length; i++) {
 			NewCap[i] = factor*FDMtopoinstance.getCustomizedLink(i).getCapacity();
 		}
+		//log.info("AdjustCaps: result : ");
+		log.info(" factor" + Float.toString(factor));
 		return factor;
 	}
 

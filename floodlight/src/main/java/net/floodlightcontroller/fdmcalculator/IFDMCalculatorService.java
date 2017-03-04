@@ -65,8 +65,9 @@ public interface IFDMCalculatorService extends IFloodlightService {
 	 * @param  the path need to add into FDM module
 	 * No return
 	 */
-	public void addPath(Path p);
+	public void addPath(String pathstr,Path p);
 	
+	public void delectPath(String pathstr,Path p);
 	/*
 	 * Return all rules set by user
 	 */
@@ -75,4 +76,5 @@ public interface IFDMCalculatorService extends IFloodlightService {
 	public void addRule(String nodetuple,Float req,Float cap);
 	
 	public void clearRule();
+	
 }

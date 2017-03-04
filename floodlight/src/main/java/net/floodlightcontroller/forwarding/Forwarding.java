@@ -50,6 +50,7 @@ import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.dropmeter.DropMeter;
+import net.floodlightcontroller.fdmcalculator.IFDMCalculatorService;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.packet.Ethernet;
@@ -65,6 +66,7 @@ import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.routing.PathId;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.ExpiringMap;
+import net.floodlightcontroller.util.ExpiringMap.ExpirationListener;
 import net.floodlightcontroller.util.FlowModUtils;
 import net.floodlightcontroller.util.MptcpConnection;
 import net.floodlightcontroller.util.OFDPAUtils;
@@ -145,7 +147,9 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
     private static final long FLOWSET_MASK = ((1L << FLOWSET_BITS) - 1) << FLOWSET_SHIFT;
     private static final long FLOWSET_MAX = (long) (Math.pow(2, FLOWSET_BITS) - 1);
     protected static FlowSetIdRegistry flowSetIdRegistry;
-    private DropMeter dm;
+    
+    protected static IFDMCalculatorService fdmservice;
+    //private DropMeter dm;
     
     //private volatile Map<String, Path> map;
     
@@ -534,21 +538,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 srcPort,
                 dstAp.getNodeId(),
                 dstAp.getPortId());
-       // List<Path> multipath = routingEngineService.getPathsFast(srcSw, 
-       //         dstAp.getNodeId(),k);
-       // log.info("multipath: size={}",multipath.size());
-       // for(Path p:multipath){
-       // 	if(!p.getPath().isEmpty()){
-       // 		log.info("pushRoute inPort={} route={} " +
-       //                 "destination={}:{}",
-       //                 new Object[] { srcPort, p,
-       //                         dstAp.getNodeId(),
-       //                         dstAp.getPortId()});
-       //         log.info("Creating flow rules on the route, match rule: {}", m);
-       // 	}
-       // }
-       // log.info("multipath end");
-        //Match m = createMatchFromPacket(sw, srcPort, pi, cntx);
         
         if (! path.getPath().isEmpty()) {
         //    if (log.isDebugEnabled()) {
@@ -602,7 +591,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                         Path p = uniquepathcache.get(possible_ports);
                         if(p!=null&&!p.getPath().isEmpty())
                         {
-                            log.info("reverse path");
+                            log.info("reverse path");    /*since fdm algorithm changed, symmetric assumption can be removed*/
                             List<NodePortTuple> nptlist =  p.getPath();
                             Collections.reverse(nptlist);
                             PathId id = new PathId(srcSw,dstAp.getNodeId());
@@ -665,8 +654,10 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                                          OFPort currentPort = p.getPath().get(1).getPortId();         
                                          IOFSwitch  nextSwitch = switchService.getSwitch((p.getPath().get(2).getNodeId()));
                                          OFPort nextPort = p.getPath().get(2).getPortId();
+                                         
+                                         this.fdmservice.addPath(srcIp2+"-"+dstIp2, p);
                                          //DropMeter dm = new DropMeter();
-                                         dm.addpathtoFDMmodule(p);
+                                         //dm.addpathtoFDMmodule(p);
                                          //log.info("rate:{}",dm.createMeter(currentSwitch, currentPort, nextSwitch, nextPort));
                                          
                                          //dm.bindMeterWithFlow(srcPort, destcpPort, srcIp2, currentSwitch, srctcpPort, p);
@@ -793,8 +784,9 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                                         
                                         //log.info("rate:{}",dm.createMeter(currentSwitch, currentPort, nextSwitch, nextPort));
                                         //dm.bindMeterWithFlow(srcPort, destcpPort, srcIp2, currentSwitch, srctcpPort, newPath);
-                                        dm.addpathtoFDMmodule(newPath);
-
+                                        //dm.addpathtoFDMmodule(newPath);
+                                        this.fdmservice.addPath(srcIp2+"-"+dstIp2, newPath);
+                                        
                                         pushRoute(newPath, m, pi, sw.getId(), cookie, 
                                             cntx, requestFlowRemovedNotifn,
                                             OFFlowModCommand.ADD);
@@ -883,7 +875,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                     Path p = uniquepathcache.get(ports);
                     if(!p.getPath().isEmpty())
                     {
-                    //log.info("hit uniquepathcache:{}",ports);
+                    log.info("hit uniquepathcache:{}",ports);
 
                     U64 flowSetId = flowidset.get(p.getPath().toString());
                     //flowSetIdRegistry.generateFlowSetId();
@@ -892,7 +884,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                         flowSetId= flowSetIdRegistry.generateFlowSetId();
                     }
                     else{
-                    log.info("existing flow id: {}",flowSetId);
+                    	log.info("existing flow id: {}",flowSetId);
                     }
 
                     U64 cookie = makeForwardingCookie(decision, flowSetId);
@@ -904,7 +896,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                     //DropMeter dm = new DropMeter();
                     //log.info("rate:{}",dm.createMeter(currentSwitch, currentPort, nextSwitch, nextPort));
                     //dm.bindMeterWithFlow(srcPort, destcpPort, srcIp2, currentSwitch, srctcpPort, p);
-                    dm.addpathtoFDMmodule(p);
+                    //dm.addpathtoFDMmodule(p);
+                    this.fdmservice.addPath(srcIp2+"-"+dstIp2, p);
                     pushRoute(uniquepathcache.get(ports), m, pi, sw.getId(), cookie,
                         cntx, requestFlowRemovedNotifn,OFFlowModCommand.MODIFY);
                     for (NodePortTuple npt : uniquepathcache.get(ports).getPath()) {
@@ -952,7 +945,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         	}
         }
         else{
-        	log.info("line 737");
+        	log.info("line 737" + eth2.getEtherType().toString());
         	U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
             U64 cookie = makeForwardingCookie(decision, flowSetId);
             Path path = routingEngineService.getPath(srcSw, 
@@ -1258,11 +1251,20 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         this.debugCounterService = context.getServiceImpl(IDebugCounterService.class);
         this.switchService = context.getServiceImpl(IOFSwitchService.class);
         this.linkService = context.getServiceImpl(ILinkDiscoveryService.class);
-
-        dm = new DropMeter(context);
-        //this.map = new HashMap<String,Path>();
+        
+        this.fdmservice = context.getServiceImpl(IFDMCalculatorService.class); // it is not the service but the provide
+        
+        //dm = new DropMeter(context);
+        //this.map = new HashMap<String,Path>(); 
         this.flows = ExpiringMap.builder()
-        		.expiration(5, TimeUnit.SECONDS)
+        		.expiration(FLOWMOD_DEFAULT_IDLE_TIMEOUT, TimeUnit.SECONDS)
+//        		.expirationListener(new ExpirationListener<String, MptcpConnection>()
+//        					{ 
+//        			     		public void expired(String key, MptcpConnection mptcp) { 
+//        			     			log.info(mptcp.toString() + "expired");
+//        				     } 
+//        	     }) 
+        		// 5s
         		.build();
 		this.pathCache =ExpiringMap.builder()
         		.expiration(60, TimeUnit.SECONDS)

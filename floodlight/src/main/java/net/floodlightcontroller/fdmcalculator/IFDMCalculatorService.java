@@ -8,7 +8,9 @@ package net.floodlightcontroller.fdmcalculator;
 import java.util.Map;
 import java.util.List;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.TransportPort;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.IFloodlightService;
@@ -58,14 +60,16 @@ public interface IFDMCalculatorService extends IFloodlightService {
 	 * @param desSwitchID - ID for the destination node
 	 * @return bandwidth
 	 */
-	public Float getFlowBW(IOFSwitch currentSwitch, OFPort currentPort,IOFSwitch nextSwitch, OFPort nextPort);
+	public Float getFlowBW(DatapathId currentSwitch, OFPort currentPort,DatapathId nextSwitch, OFPort nextPort);
 	
 	/*
 	 * Describe: the path need to add into FDM module
 	 * @param  the path need to add into FDM module
 	 * No return
 	 */
-	public void addPath(String pathstr,Path p);
+	public void addPath(IPv4Address src, IPv4Address dst,TransportPort srcport, TransportPort dstport,  Path p);
+	
+	public void deleterule_path(String rule_Key);
 	
 	public void delectPath(String pathstr,Path p);
 	/*

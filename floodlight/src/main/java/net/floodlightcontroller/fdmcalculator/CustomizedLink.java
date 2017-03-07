@@ -19,7 +19,7 @@ public class CustomizedLink {
 	 Now, the attribute of capacity is implemented in the class <@Links>
 	 */
 	
-	private float capacity = Float.MAX_VALUE;
+	private float capacity = Float.POSITIVE_INFINITY;
 	private Link linkattribute = null;
 	
 	private float requirement;// = 2.0f;
@@ -38,7 +38,7 @@ public class CustomizedLink {
 	public CustomizedLink(Link link){
 		this.linkattribute = link;
 		this.requirement = 0.0f;
-		//this.capacity = Float.POSITIVE_INFINITY;
+		this.capacity = Float.POSITIVE_INFINITY;
 		this.currentlinklength=0.0f;
 	}
 

@@ -212,9 +212,14 @@ class FDMTopology {
 		return allLinks.get(index);
 	}
 	
+	public CustomizedLink getCustomizedLink(String linkstr){
+		return this.cuslinksmapping.get(linkstr);
+	}
+	
 	public Integer getCustomizedLinkindex(CustomizedLink cl){
 		return this.allLinks.indexOf(cl);
 	}
+	
 	
 	public Integer getNoLinks() {
 		return allLinks.size();

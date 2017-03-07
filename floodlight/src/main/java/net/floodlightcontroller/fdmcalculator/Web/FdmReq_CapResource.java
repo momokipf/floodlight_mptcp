@@ -44,7 +44,7 @@ public class FdmReq_CapResource extends ServerResource{
 	private static final String STR_DSTPOR = "dst-port";
 	private static final String STR_CAP = "capacity";
 	private static final String STR_REQ = "requirement";
-	
+	private static final String STR_CMD = "cmd";
 	
 	@Get("json")
 	public Set<Ruleinfo> retrieveallReq_Cap(){
@@ -71,7 +71,8 @@ public class FdmReq_CapResource extends ServerResource{
 		String src_port = null;
 		String dst_sw = null;
 		String dst_port = null;
-		Float cap = Float.MAX_VALUE;
+		String cmd = null;
+		Float cap = Float.POSITIVE_INFINITY;
 		Float req = 0.0f;
 		System.out.println(json);
 		try{
@@ -106,6 +107,8 @@ public class FdmReq_CapResource extends ServerResource{
 				case STR_CAP: cap = Float.parseFloat( jp.getText());
 								break;
 				case STR_REQ: req = Float.parseFloat( jp.getText());
+								break;
+				case STR_CMD: cmd = jp.getText();
 				default : break;
 				}
 			}
@@ -115,6 +118,12 @@ public class FdmReq_CapResource extends ServerResource{
     		e.printStackTrace();
     		
     	}
+		
+		if(cmd==null)
+		{
+			return "Invalid cmd, cmd parameter missing";
+		}
+		
     	if(src_sw==null||src_port==null||dst_sw==null||dst_port==null){
     		return "Invalid rule, set rules failed\n";
     	}
@@ -137,10 +146,17 @@ public class FdmReq_CapResource extends ServerResource{
 				// if(fds.getRules().get(rule_key).get(1)!= cap){
 	
 				// }
+    			if(cmd.equals("DELETE")){
+					fds.deleterule_path(rule_key);
+				}
 				return "Rule already set in fdm";
 			}
 			else{
-				fds.addRule(rule_key,req,cap);
+				if(cmd.equals("ADD"))
+					fds.addRule(rule_key,req,cap);
+				else if(cmd.equals("DELETE")){
+					return "Rule was not set before";
+				}
 				return "Rule set successfully";
 			}
     	//}

@@ -13,6 +13,7 @@ import net.floodlightcontroller.core.FloodlightContext;
 import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
+import org.projectfloodlight.openflow.protocol.OFFlowModify;
 import org.projectfloodlight.openflow.protocol.OFMeterFlags;
 import org.projectfloodlight.openflow.protocol.OFMeterMod;
 import org.projectfloodlight.openflow.protocol.OFMeterModCommand;
@@ -39,7 +40,7 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.routing.Path;
 
 import org.projectfloodlight.openflow.types.TransportPort;
-import net.floodlightcontroller.fdmcalculator.FDMCalculator; 
+import net.floodlightcontroller.fdmcalculator.FDMCalculator;
 import net.floodlightcontroller.fdmcalculator.IFDMCalculatorService; 
 
 
@@ -48,49 +49,71 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class DropMeter{
-
+	
+		protected static int meterid = 1; 
+	    protected IFDMCalculatorService fdmservice;
+	    
+	    protected static final Logger log = LoggerFactory.getLogger(DropMeter.class);
 		public DropMeter(FloodlightModuleContext context){
 			fdmservice = context.getServiceImpl(IFDMCalculatorService.class);
 		}
 
-	    public int createMeter(IOFSwitch currentSwitch, OFPort currentPort,IOFSwitch nextSwitch, OFPort nextPort ) {
-	    	 OFFactory meterFactory = OFFactories.getFactory(OFVersion.OF_13);
-	            OFMeterMod.Builder meterModBuilder = meterFactory.buildMeterMod()
-	                .setMeterId(meterid).setCommand(OFMeterModCommand.ADD);
-
+		public DropMeter(){
+			
+		}
+		
+	    public Float createMeter(IOFSwitch currentSwitch, OFPort currentPort,IOFSwitch nextSwitch, OFPort nextPort ) {
 
 	            /*Please change the rate here. The switch&port needed are passed as parameter to this function. */
 	            //int rate  = 1000; 
-	            int rate = (int)(fdmservice.getFlowBW(currentSwitch, currentPort, nextSwitch, nextPort)*1000);
+	            //Float rate = (fdmservice.getFlowBW(currentSwitch, currentPort, nextSwitch, nextPort)*1000);
 	            //rate = (int)rate*1000;
 	            /*End of getRate()*/
 	            //int rate = 10000;
-
-	            OFMeterBandDrop.Builder bandBuilder = meterFactory.meterBands().buildDrop()
-	                .setRate(rate);
-	            OFMeterBand band = bandBuilder.build();
-	            List<OFMeterBand> bands = new ArrayList<OFMeterBand>();
-	            bands.add(band);
-	  
-	            Set<OFMeterFlags> flags2 = new HashSet<>();
-	            flags2.add(OFMeterFlags.KBPS);
-	            meterModBuilder.setMeters(bands)
-	                .setFlags(flags2).build();
-
-	            currentSwitch.write(meterModBuilder.build());
-	            return rate;
+	    		Float rate = 2.0f;//Float.POSITIVE_INFINITY;
+	            createMeter(currentSwitch,currentPort,nextSwitch,nextPort,rate);
+	            
+	            return  rate;
 	     }
+	    
+	    public int createMeter(IOFSwitch currentSwitch, OFPort currentPort,IOFSwitch nextSwitch, OFPort nextPort ,Float rate) {
+	    	OFFactory meterFactory = OFFactories.getFactory(OFVersion.OF_13);
+            OFMeterMod.Builder meterModBuilder = meterFactory.buildMeterMod()
+                .setMeterId(meterid).setCommand(OFMeterModCommand.ADD);
+            
+            OFMeterBandDrop.Builder bandBuilder = meterFactory.meterBands().buildDrop()
+                .setRate(Math.round(rate*1000));
+            OFMeterBand band = bandBuilder.build();
+            List<OFMeterBand> bands = new ArrayList<OFMeterBand>();
+            bands.add(band);
+  
+            Set<OFMeterFlags> flags2 = new HashSet<>();
+            flags2.add(OFMeterFlags.KBPS);
+            meterModBuilder.setMeters(bands)
+                .setFlags(flags2).build();
+
+            currentSwitch.write(meterModBuilder.build());
+            return Math.round(rate);
+	    	
+	    }
 	    
 	    public void addpathtoFDMmodule(Path p){
 	    	//this.fdmservice.addPath(p);
 	    }
 	    
 	    
-	    public void bindMeterWithFlow(OFPort inPort, TransportPort dstPort, IPv4Address srcIp, IOFSwitch sw, TransportPort srcPort, Path path) {
+	    public void bindMeterWithFlow(OFPort inPort,IPv4Address dstIp, TransportPort dstPort, IPv4Address srcIp, IOFSwitch sw, TransportPort srcPort, Path path) {
 	    	Match.Builder mb = sw.getOFFactory().buildMatch();
+	    	
+	    	log.info("bindMeter[ inport:" + inPort.toString()+
+	    			" tcpdstPort:" + dstPort.toString()+
+	    			" tcpip:" + srcIp.toString() +
+	    			" sw:" + sw.toString() +
+	    			" tcpsrcPort:" + srcPort.toString() + ']');
 	    	mb.setExact(MatchField.IN_PORT, inPort)
 	    	.setExact(MatchField.ETH_TYPE, EthType.IPv4)
 	    	.setExact(MatchField.IPV4_SRC, srcIp)
+	    	.setExact(MatchField.IPV4_DST, dstIp)
     		.setExact(MatchField.IP_PROTO, IpProtocol.TCP)
             .setExact(MatchField.TCP_SRC, srcPort)
             .setExact(MatchField.TCP_DST, dstPort);
@@ -115,14 +138,18 @@ public class DropMeter{
             instructions.add(meter);
             meterid++;
 
-            OFFlowAdd flowAdd = my13Factory.buildFlowAdd()
-                    .setMatch(mb.build())
-                    .setInstructions(instructions)
-                    .setPriority(32768)
-                    .build();
-                sw.write(flowAdd);
+            OFFlowModify flowmod = my13Factory.buildFlowModify()
+            		.setMatch(mb.build())
+            		.setInstructions(instructions)
+            		.build();
+            sw.write(flowmod);
+            		
+//            OFFlowAdd flowAdd = my13Factory.buildFlowAdd()
+//                    .setMatch(mb.build())
+//                    .setInstructions(instructions)
+//                    .setPriority(32768)
+//                    .build();
+//                sw.write(flowAdd);
 	    }
 	    
-	    protected static int meterid = 1; 
-	    protected IFDMCalculatorService fdmservice;
 }

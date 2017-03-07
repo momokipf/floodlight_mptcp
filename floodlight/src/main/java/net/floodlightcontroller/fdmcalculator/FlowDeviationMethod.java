@@ -37,6 +37,7 @@ class FlowDeviationMethod {
 	private Float[] NewCap;
 	private Float[] globalFlow;  //included in customizedlink 
 	private Float[] EFlow; 		 //included in customizedlink 
+	private Float[] FDlen;
 	//private Float[] FDlen;
 	
 	private Float total_req ;
@@ -49,8 +50,9 @@ class FlowDeviationMethod {
 		EFlow = new Float[FDMtopoinstance.getNoLinks()];
 		shortestPath = new HashMap<PathId,LinkedList<Integer>>();
 		total_req = FDMtopoinstance.getTotal_requirement();
+		FDlen = new Float[FDMtopoinstance.getNoLinks()];
 		for(int i= 0; i <FDMtopoinstance.getallLinks().size();++i ){
-			log.debug('('+Integer.toString(i)+')' + ' '+FDMtopoinstance.getallLinks().get(i).toString());
+			log.info('('+Integer.toString(i)+')' + ' '+FDMtopoinstance.getallLinks().get(i).toString());
 		}
 	}
 
@@ -80,7 +82,7 @@ class FlowDeviationMethod {
 //		return globalFlows;
 //	}
 
-	public void runFDM() {
+	public Float[] runFDM() {
 		
 //		//Initialization Code
 //		
@@ -96,6 +98,7 @@ class FlowDeviationMethod {
 			NewCap[i] = 0.0f;
 			globalFlow[i] = 0.0f;
 			EFlow[i] = 0.0f;
+			FDlen[i] = 0.0f;
 		}
 
 		//log.info("/*********************Start fdm algorithm*****************************/");
@@ -106,8 +109,8 @@ class FlowDeviationMethod {
 //		Integer prInteger = 1;
 		boolean feasible = true;
 		
-		SetLinkLens(globalFlow,FDMtopoinstance.getMsgLen());
-		SetSP();
+		SetLinkLens(globalFlow,FDMtopoinstance.getMsgLen(),FDlen);
+		SetSP(FDlen);
 		LoadLinks(globalFlow);
 		Aresult = AdjustCaps(globalFlow,NewCap);
 		if (Aresult == 1)
@@ -119,8 +122,8 @@ class FlowDeviationMethod {
 		Integer count = 0;
 		//start to run FDM
 		while(Aflag || (CurrentDelay < PreviousDelay*(1-EPSILON))) {
-			SetLinkLens(globalFlow,FDMtopoinstance.getMsgLen());
-			SetSP();
+			SetLinkLens(globalFlow,FDMtopoinstance.getMsgLen(),FDlen);
+			SetSP(FDlen);
 			LoadLinks(EFlow);
 			//previous delay based on current NewCap
 			PreviousDelay = CalcDelay(globalFlow, NewCap, FDMtopoinstance.getMsgLen(), total_req);
@@ -145,8 +148,14 @@ class FlowDeviationMethod {
 		
 		if(feasible){
 			
-			log.info("FDM calcuate done");
-			//return globalFlow;
+			StringBuffer ss = new StringBuffer();
+			
+			for(int i = 0 ; i < this.FDMtopoinstance.getNoLinks();++i){
+				this.FDMtopoinstance.getCustomizedLink(i).currentlinklength = globalFlow[i];
+				ss.append(Float.toString(globalFlow[i]));
+			}
+			log.info("FDM calcuate done" + ss.toString());
+			return globalFlow;
 		}
 		else{
 //			PreviousDelay = network.getCurrentDelay();
@@ -174,26 +183,27 @@ class FlowDeviationMethod {
 //			count++;
 			log.info("infeasible");
 		}
-		//return getGlobalFlows(network);
+		return globalFlow;
 	}
 
 	
-	private void SetLinkLens(Float[] Flow,Integer MsgLen) {
+	private void SetLinkLens(Float[] Flow,Integer MsgLen, Float[] Len) {
 		log.info("/*********************Start fdm SetLinkLens*****************************/");
 		int i = 0;
 		for(CustomizedLink clink:this.FDMtopoinstance.getallLinks()){
-			clink.currentlinklength = DerivDelay(Flow[i++],clink.getCapacity(), MsgLen);
+			//clink.currentlinklength = DerivDelay(Flow[i++],clink.getCapacity(), MsgLen);
+			Len[i] = DerivDelay(Flow[i++],clink.getCapacity(), MsgLen);
 		}
 	}
 
 	
-	private void SetSP() {
+	private void SetSP(Float[] len) {
 		log.info("/*********************Start fdm SetSP*****************************/");
 		for(PathId pid: this.FDMtopoinstance.getadj().keySet()){
 			Float dis = Float.MAX_VALUE;
 			for(LinkedList<Integer> l:this.FDMtopoinstance.getadj().get(pid)){
 				//log.info(l.toString());
-				Float tmp_dis = calculatAlllatency(l);
+				Float tmp_dis = calculatAlllatency(l,len);
 				//log.info("the path of "+ l.toString()+" latency : "+Float.toString(tmp_dis));
 				if(tmp_dis<dis){
 					dis = tmp_dis;
@@ -203,7 +213,7 @@ class FlowDeviationMethod {
 		}
 	}
 	
-	private Float calculatAlllatency(LinkedList<Integer> path){
+	private Float calculatAlllatency(LinkedList<Integer> path,Float[] len){
 		Float latency = 0.0f;
 		log.info("/*********************Start fdm calculatAlllatency*****************************/");
 		int index = 0 ;
@@ -216,7 +226,7 @@ class FlowDeviationMethod {
 			index++;
 			CustomizedLink curlink = FDMtopoinstance.getCustomizedLink(p);
 			//log.info('('+Integer.toString(p)+')' + ' '+curlink.toString());
-			latency += curlink.currentlinklength + curlink.getLatency().getValue(); 
+			latency += /*curlink.currentlinklength*/len[p]   + curlink.getLatency().getValue()/100; 
 		}
 		log.info(path.toString() + "latency" + Float.toString(latency));
 		return latency;
@@ -280,7 +290,8 @@ class FlowDeviationMethod {
 	private Float AdjustCaps(Float Flow[],Float NewCap[]) {
 		Float factor = 1.0f;
 		for( Integer i = 0; i < Flow.length; i++) {
-			factor = Math.max(factor, (1+DELTA)*Flow[i]/this.FDMtopoinstance.getCustomizedLink(i).getCapacity());
+			Float cap = this.FDMtopoinstance.getCustomizedLink(i).getCapacity();
+			factor = Math.max(factor, (1+DELTA)*Flow[i]/cap);
 		}
 		for(Integer i = 0; i < Flow.length; i++) {
 			NewCap[i] = factor*FDMtopoinstance.getCustomizedLink(i).getCapacity();

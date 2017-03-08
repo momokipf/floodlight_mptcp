@@ -23,6 +23,14 @@ Use `dpctl unix:/tmp/(switch name) states-flow` to check the switch's flow table
 Use `dpctl unix:/tmp/(switch name) meter-config` to check meter table.
 
 
+##Attention
+
+If you want to multiple test algorithm, you have to use `cmd=DELETE (virtual link)` to clear the path cache.
+curl -X POST -d '{"cmd":"DELETE","dst-port":"1","dst-switch":"00:00:00:00:00:00:00:01","src-switch":"00:00:00:00:00:00:00:01","src-port":"1"}' http://localhost:8080/wm/fdm/config/json
+
+
+
+
 This project is collaborated with UCLA Phd Pengyuan Du 
 
 

@@ -51,9 +51,9 @@ class FlowDeviationMethod {
 		shortestPath = new HashMap<PathId,LinkedList<Integer>>();
 		total_req = FDMtopoinstance.getTotal_requirement();
 		FDlen = new Float[FDMtopoinstance.getNoLinks()];
-		for(int i= 0; i <FDMtopoinstance.getallLinks().size();++i ){
-			log.info('('+Integer.toString(i)+')' + ' '+FDMtopoinstance.getallLinks().get(i).toString());
-		}
+//		for(int i= 0; i <FDMtopoinstance.getallLinks().size();++i ){
+//			log.info('('+Integer.toString(i)+')' + ' '+FDMtopoinstance.getallLinks().get(i).toString());
+//		}
 	}
 
 
@@ -152,7 +152,7 @@ class FlowDeviationMethod {
 			
 			for(int i = 0 ; i < this.FDMtopoinstance.getNoLinks();++i){
 				this.FDMtopoinstance.getCustomizedLink(i).currentlinklength = globalFlow[i];
-				ss.append(Float.toString(globalFlow[i]));
+				ss.append(Float.toString(globalFlow[i])+' ');
 			}
 			log.info("FDM calcuate done" + ss.toString());
 			return globalFlow;
@@ -226,7 +226,7 @@ class FlowDeviationMethod {
 			index++;
 			CustomizedLink curlink = FDMtopoinstance.getCustomizedLink(p);
 			//log.info('('+Integer.toString(p)+')' + ' '+curlink.toString());
-			latency += /*curlink.currentlinklength*/len[p]   + curlink.getLatency().getValue()/100; 
+			latency += /*curlink.currentlinklength*/len[p];  // + curlink.getLatency().getValue()/100; 
 		}
 		log.info(path.toString() + "latency" + Float.toString(latency));
 		return latency;

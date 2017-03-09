@@ -44,7 +44,7 @@ import net.floodlightcontroller.fdmcalculator.Web.FdmWebRoutable;
 
 public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, IFloodlightModule {
 
-	protected int FDMCALCULATE_INTERVAL = 500;
+	protected int FDMCALCULATE_INTERVAL = 1000;
 	
 	protected static final Logger log = LoggerFactory.getLogger(FDMCalculator.class);
 

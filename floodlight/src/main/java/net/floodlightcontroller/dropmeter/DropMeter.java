@@ -51,11 +51,11 @@ import org.slf4j.LoggerFactory;
 public class DropMeter{
 	
 		protected static int meterid = 1; 
-	    protected IFDMCalculatorService fdmservice;
+	    //protected IFDMCalculatorService fdmservice;
 	    
 	    protected static final Logger log = LoggerFactory.getLogger(DropMeter.class);
 		public DropMeter(FloodlightModuleContext context){
-			fdmservice = context.getServiceImpl(IFDMCalculatorService.class);
+			//fdmservice = context.getServiceImpl(IFDMCalculatorService.class);
 		}
 
 		public DropMeter(){
@@ -90,7 +90,9 @@ public class DropMeter{
             Set<OFMeterFlags> flags2 = new HashSet<>();
             flags2.add(OFMeterFlags.KBPS);
             meterModBuilder.setMeters(bands)
-                .setFlags(flags2).build();
+                .setFlags(flags2)
+                .build();
+                
 
             currentSwitch.write(meterModBuilder.build());
             return Math.round(rate);

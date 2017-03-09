@@ -261,7 +261,7 @@ ITopologyManagerBackend, ILinkDiscoveryListener, IOFMessageListener {
     	for(DatapathId s:switches){
     		//if(this.switchPortLinks.get(s)==null) continue;
     		for(OFPort p:switchPorts.get(s)){
-                log.info("Check Edges : " + s.toString()+ ':' + p.toString());
+                log.debug("Check Edges : " + s.toString()+ ':' + p.toString());
     			if(ti.isEdge(s, p)){
     				edgeswitch.put(s,p);
     				break;

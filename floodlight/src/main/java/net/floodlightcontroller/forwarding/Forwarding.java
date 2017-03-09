@@ -579,7 +579,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 				TransportPort srctcpPort = tcp2.getSourcePort();
 				TransportPort destcpPort = tcp2.getDestinationPort();
 				String ports = srcIp2.toString()+"-"+String.valueOf(srctcpPort.getPort()) + "-"+dstIp2.toString() +  "-" + String.valueOf(destcpPort.getPort());
-				log.info("TCP package {}",ports);
+				//log.info("TCP package {}",ports);
                 if(!uniquepathcache.containsKey(ports)){
 				    byte[] options;
                     short flag = tcp2.getFlags();
@@ -597,7 +597,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                             PathId id = new PathId(srcSw,dstAp.getNodeId());
                             Path newPath =  new Path(id, nptlist);
                             uniquepathcache.put(possible_ports,newPath); 
-                            log.info("Selected Route (MPJOIN) = " + newPath.toString());
+                            log.debug("Selected Route (MPJOIN) = " + newPath.toString());
                             //log.info("Switch id:{},Port{}",sw.getId().toString(),v2.get(0).getPath().get(1).getPortId().toString());
                             U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
                             U64 cookie = makeForwardingCookie(decision, flowSetId);
@@ -667,7 +667,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                                                 flowModCommand);      
                                          //log.info("rate:{}",dm.createMeter(currentSwitch, currentPort, nextSwitch, nextPort));
                                          //dm.bindMeterWithFlow(srcPort,dstIp2,destcpPort, srcIp2, currentSwitch, srctcpPort, p);
-                                         log.info("pushRoute inPort={} route={} " +
+                                         log.debug("pushRoute inPort={} route={} " +
                                                 "destination={}:{}",
                                                 new Object[] { srcPort, p ,
                                                         dstAp.getNodeId(),
@@ -677,7 +677,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                                                 //log.info(npt.toString());
                                                 flowSetIdRegistry.registerFlowSetId(npt, flowSetId);
                                          }
-                                         log.info("flowid {}",flowSetId.toString());
+                                         log.info(srcIp2+"-"+dstIp2+"get path ");
                                          uniquepathcache.put(ports, p);
                                          flowidset.put(p.getPath().toString(),flowSetId);
                                          break;
@@ -947,7 +947,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         	}
         }
         else{
-        	log.info("line 737" + eth2.getEtherType().toString());
+        	log.debug("line 950  this package is not IPV4 package");
         	U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
             U64 cookie = makeForwardingCookie(decision, flowSetId);
             Path path = routingEngineService.getPath(srcSw, 
@@ -1023,12 +1023,11 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         }
 
         log.info("multipath: size={}",ret.size());
-        for(Path p:ret){
-        if(!p.getPath().isEmpty()){
-            log.info("route={} ",p.toString());
-            }
-        }
-        log.info("multipath end");
+//        for(Path p:ret){
+//        if(!p.getPath().isEmpty()){
+//            log.info("route={} ",p.toString());
+//            }
+//        }
 
         return ret;
     }

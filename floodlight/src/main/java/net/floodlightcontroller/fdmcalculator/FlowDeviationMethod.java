@@ -226,7 +226,7 @@ class FlowDeviationMethod {
 			index++;
 			CustomizedLink curlink = FDMtopoinstance.getCustomizedLink(p);
 			//log.info('('+Integer.toString(p)+')' + ' '+curlink.toString());
-			latency += /*curlink.currentlinklength*/len[p]   + curlink.getLatency().getValue()/100; 
+			latency += /*curlink.currentlinklength*/len[p];  // + curlink.getLatency().getValue()/100; 
 		}
 		log.info(path.toString() + "latency" + Float.toString(latency));
 		return latency;

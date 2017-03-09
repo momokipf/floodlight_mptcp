@@ -72,7 +72,7 @@ class FDMTopology {
 						cuslink = new CustomizedLink(link);
 					}
 					allLinks.add(cuslink);
-					log.debug('('+Integer.toString(allLinks.size())+')' + ' '+cuslink);
+					//log.debug('('+Integer.toString(allLinks.size())+')' + ' '+cuslink);
 					cuslinksmapping.put(switchTuple,cuslink);
 				}
 			}
@@ -115,7 +115,7 @@ class FDMTopology {
 	public void addPathtoTopology(Path path){
 		List<NodePortTuple> nstlist = path.getPath();
 		ArrayList<LinkedList<Integer>> ll = null;
-		log.info(path.toString());
+		//log.info(path.toString());
 		if(this.adjlinkfromswitch.containsKey(path.getId())){
 			ll = (ArrayList<LinkedList<Integer>>)adjlinkfromswitch.get(path.getId());
 		}
@@ -191,7 +191,7 @@ class FDMTopology {
 		}
 		
 		ll.add(l);
-		log.info(ll.toString());
+		log.info(path.getId().toString()+ll.toString());
 		adjlinkfromswitch.put(path.getId(),ll);
 	}
 	

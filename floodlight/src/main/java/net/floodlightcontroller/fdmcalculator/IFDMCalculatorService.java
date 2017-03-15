@@ -71,7 +71,7 @@ public interface IFDMCalculatorService extends IFloodlightService {
 	
 	public void deleterule_path(String rule_Key);
 	
-	public void delectPath(String pathstr,Path p);
+	public void deletePath(String pathstr,Path p);
 	/*
 	 * Return all rules set by user
 	 */

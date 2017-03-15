@@ -55,7 +55,29 @@ class FDMTopology {
 		log.info("FDMTopology: edges.size()=" + Integer.toString(edges.size())); 
 		//invertlinkmap = new HashMap<CustomizedLink,Integer>();
 
-		
+		for(Map.Entry<DatapathId, Set<Link>> entry:topLinks.entrySet()){
+			for(Link link:entry.getValue()){
+				//int currentIndex = cusLinks.size();
+				String switchTuple = link.getSrc().toString()+'-'+link.getSrcPort().toString()+'-'+
+										link.getDst().toString()+'-'+link.getDstPort();
+				if(!cuslinksmapping.containsKey(switchTuple)){	// remove duplicate
+					CustomizedLink cuslink = null;
+					if(rule.containsKey(switchTuple)){
+						log.info("FDMTopology:find the rules");
+						cuslink = new CustomizedLink(link,rule.get(switchTuple).get(1),rule.get(switchTuple).get(0));
+					}
+					else{
+						//log.info("failed to find the rules");
+						cuslink = new CustomizedLink(link);
+					}
+					allLinks.add(cuslink);
+					//log.debug('('+Integer.toString(allLinks.size())+')' + ' '+cuslink);
+					cuslinksmapping.put(switchTuple,cuslink);
+				}
+			}
+		}
+			
+		/*
 		for(DatapathId s:topLinks.keySet()){
 			for(Link link:topLinks.get(s)){
 				//int currentIndex = cusLinks.size();
@@ -91,7 +113,7 @@ class FDMTopology {
 				cuslinksmapping.put(switchTuple, cuslink);
 			}
 		}
-	
+		*/
 		
 		switchesnum = topLinks.keySet().size();
 		adjlinkfromswitch = new HashMap<PathId,List<LinkedList<Integer>>>();

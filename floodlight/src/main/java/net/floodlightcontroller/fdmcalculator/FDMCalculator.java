@@ -305,7 +305,7 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 	}
 	
 	@Override 
-	public void delectPath(String pathstr,Path p){
+	public void deletePath(String pathstr,Path p){
 		
 	}
 	

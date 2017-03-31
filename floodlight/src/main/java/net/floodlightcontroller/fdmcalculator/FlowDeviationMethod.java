@@ -158,11 +158,9 @@ class FlowDeviationMethod {
 			return globalFlow;
 		}
 		else{
-//			PreviousDelay = network.getCurrentDelay();
-//			network.setCurrentDelay(CalcDelay(network.getGflow(), NewCap, network.getMsgLen(), network.getTotal_requirement()));
 			//judge whether the problem is feasible 
 //			Float max_FD_len = 0f, min_FD_len = Float.POSITIVE_INFINITY;
-//			for (Integer i = 0; i < network.getNoLinks(); i++) {
+//			for (Integer i = 0; i < FDMtopoinstance.getNoLinks(); i++) {
 //				if (FDlen[i] > 0) {
 //					max_FD_len = Math.max(max_FD_len, FDlen[i]);
 //					min_FD_len = Math.min(min_FD_len, FDlen[i]);

@@ -25,12 +25,6 @@ public class IPPath {
 	public Path getNextPath(){
 
 		Path p = availablePath.get(currentSubflowNumber);
-		//increaseCurrentSubflowNumber();
-		// while(p.getPath().isEmpty())
-		// {
-		// 	increaseCurrentSubflowNumber();
-		// 	p = availablePath.get(currentSubflowNumber);
-		// }
 		return (full)?null:p;
 	}
 	

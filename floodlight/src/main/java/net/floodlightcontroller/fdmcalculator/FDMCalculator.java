@@ -90,16 +90,16 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 				if(pathUpdates.peek()!=null){
 					calculateFDM();
 					populatemeter();
-					//pathUpdates.clear();
+					//log.info("queue size: " + Integer.toString( pathUpdates.size()));
+					pathUpdates.removeAll(pathUpdates);
 				}
-				
+				//log.info("1 tick");
 			}
 			catch(Exception e){
 				e.printStackTrace();
 				log.error(e.getMessage());
 				
 			}finally{
-				pathUpdates.clear();
 				newInstanceTask.reschedule(FDMCALCULATE_INTERVAL, TimeUnit.MILLISECONDS);
 			}
 		}
@@ -283,9 +283,11 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 	
 	@Override
 	public void addPath(IPv4Address src, IPv4Address dst,TransportPort srcport, TransportPort dstport,  Path p){
-		if(currentInstance==null)
+		if(currentInstance==null||p==null)
 			return;
 		String pathstr = src+"-"+dst;
+		log.info("important: path " + p.toString());
+		
 		Flowinfo fi = new Flowinfo(src,dst,srcport,dstport,p);
 		if(activeuser.containsKey(pathstr)){
 			if(!activeuser.get(pathstr).contains(fi)){
@@ -423,6 +425,7 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 			Set<Path> add_path = new HashSet<Path>();
 			for(Map.Entry<String, Set<Flowinfo>> entry : activeuser.entrySet()){
 				for(Flowinfo fi:entry.getValue()){
+					log.info("rebuild PATH: "+fi.path);
 					add_path.add(fi.path);
 				}
 			}

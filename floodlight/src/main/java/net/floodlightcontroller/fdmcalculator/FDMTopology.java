@@ -34,7 +34,7 @@ class FDMTopology {
 
 	private Map<PathId,List<LinkedList<Integer>>> adjlinkfromswitch;  // Assume one allocation per node
 	//private Map<>
-	
+	private Set<Path> existPath;
 	private Map<String,CustomizedLink> cuslinksmapping;
 	protected Map<String,List<Float>> rule = null;
 	
@@ -114,7 +114,7 @@ class FDMTopology {
 			}
 		}
 		*/
-		
+		existPath = new HashSet<Path>();
 		switchesnum = topLinks.keySet().size();
 		adjlinkfromswitch = new HashMap<PathId,List<LinkedList<Integer>>>();
 		//initRequirements();
@@ -135,6 +135,14 @@ class FDMTopology {
 	
 	
 	public void addPathtoTopology(Path path){
+		if(existPath==null)
+			log.error("Path set was not initialized");
+		if(existPath.contains(path))
+		{
+			log.info("Path "+ path.toString() + " exist");
+			return;
+		}
+		existPath.add(path);
 		List<NodePortTuple> nstlist = path.getPath();
 		ArrayList<LinkedList<Integer>> ll = null;
 		//log.info(path.toString());

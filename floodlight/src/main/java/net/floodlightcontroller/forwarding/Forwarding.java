@@ -144,11 +144,15 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
     private static final short FLOWSET_BITS = 28;
     protected static final short FLOWSET_SHIFT = DECISION_BITS;
-    private static final long FLOWSET_MASK = ((1L << FLOWSET_BITS) - 1) << FLOWSET_SHIFT;
+    //private static final long FLOWSET_MASK = ((1L << FLOWSET_BITS) - 1) << FLOWSET_SHIFT;
     private static final long FLOWSET_MAX = (long) (Math.pow(2, FLOWSET_BITS) - 1);
+    private static final IPv4Address MPTCP_MASK = IPv4Address.of(0xFFFFFF00);
+    
     protected static FlowSetIdRegistry flowSetIdRegistry;
     
     protected static IFDMCalculatorService fdmservice;
+    
+    
     //private DropMeter dm;
     
     //private volatile Map<String, Path> map;
@@ -650,18 +654,13 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                                          }
                                          U64 cookie = makeForwardingCookie(decision, flowSetId);
 
-                                         IOFSwitch  currentSwitch = switchService.getSwitch((p.getPath().get(1).getNodeId()));
-                                         OFPort currentPort = p.getPath().get(1).getPortId();         
-                                         IOFSwitch  nextSwitch = switchService.getSwitch((p.getPath().get(2).getNodeId()));
-                                         OFPort nextPort = p.getPath().get(2).getPortId();
-                                         
+//                                         IOFSwitch  currentSwitch = switchService.getSwitch((p.getPath().get(1).getNodeId()));
+//                                         OFPort currentPort = p.getPath().get(1).getPortId();         
+//                                         IOFSwitch  nextSwitch = switchService.getSwitch((p.getPath().get(2).getNodeId()));
+//                                         OFPort nextPort = p.getPath().get(2).getPortId();
+                                         log.info("ADD PATH FROM NEW MPTCP "+p.toString());
                                          fdmservice.addPath(srcIp2,dstIp2,srctcpPort,destcpPort,p);
-                                         //DropMeter dm = new DropMeter();
-                                         //dm.addpathtoFDMmodule(p);
-                                         //log.info("rate:{}",dm.createMeter(currentSwitch, currentPort, nextSwitch, nextPort));
                                          
-                                        // dm.bindMeterWithFlow(srcPort,dstIp2, destcpPort, srcIp2, currentSwitch, srctcpPort, p);
-
                                          pushRoute(p, m, pi, sw.getId(), cookie, 
                                                     cntx, requestFlowRemovedNotifn,
                                                 flowModCommand);      
@@ -696,39 +695,29 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         						log.info("new token ip pair:{}",byteArray2Hex(token));
 
                                 if(!uniquepathcache.containsKey(possible_ports)){
-        						MptcpConnection newconnection = new MptcpConnection(srcIp2,dstIp2,srctcpPort.getPort(),destcpPort.getPort(),token);
-        						flows.put(byteArray2Hex(token),newconnection );
-        						ArrayList<Path> v2  = new ArrayList<Path>();
-                                //OFFlowModCommand flowModCommand =  OFFlowModCommand.ADD;
-        						if(pathCache.containsKey(srcIp2+"-"+dstIp2)){
-        							v2 = pathCache.get(srcIp2+"-"+dstIp2);
+	        						MptcpConnection newconnection = new MptcpConnection(srcIp2,dstIp2,srctcpPort.getPort(),destcpPort.getPort(),token);
+	        						flows.put(byteArray2Hex(token),newconnection );
+	        						ArrayList<Path> v2  = new ArrayList<Path>();
+	        						if(pathCache.containsKey(srcIp2+"-"+dstIp2)){
+	        							v2 = pathCache.get(srcIp2+"-"+dstIp2);
+	        						}
+	        						else{
+	        							v2 = (ArrayList<Path>) this.makeitetoe(srcSw, 
+	                                                            srcPort,
+	                                                            dstAp.getNodeId(),
+	                                                            dstAp.getPortId(),
+	                                                            k);
+	        							pathCache.put(srcIp2+"-"+dstIp2, v2);
+	        						}
+	        						int subNum=0;
+	        						if(primaryIps.containsKey(srcIp2+"-"+dstIp2)){
+	        							subNum=1;
+	        						}
+	        						newconnection.addRoutes(srcIp2, dstIp2, v2, subNum);
+	        						newPath = newconnection.getNextRoute(srcIp2, dstIp2);
+	                                //uniquepathcache.put(ports,newPath);
         						}
-        						else{
-        							v2 = (ArrayList<Path>) this.makeitetoe(srcSw, 
-                                                            srcPort,
-                                                            dstAp.getNodeId(),
-                                                            dstAp.getPortId(),
-                                                            k);
-        							pathCache.put(srcIp2+"-"+dstIp2, v2);
-        						}
-        						int subNum=0;
-        						if(primaryIps.containsKey(srcIp2+"-"+dstIp2)){
-        							subNum=1;
-        						}
-        						newconnection.addRoutes(srcIp2, dstIp2, v2, subNum);
-        						newPath = newconnection.getNextRoute(srcIp2, dstIp2);
-                                //uniquepathcache.put(ports,newPath);
-        						}
-                                 // else{
-                                 //    log.info("i think this is join ACK");
-                                 //    Path p = uniquepathcache.get(possible_ports);
-                                 //    List<NodePortTuple> nptlist =  p.getPath();
-                                 //    Collections.reverse(nptlist);
-                                 //    PathId id = new PathId(srcSw,dstAp.getNodeId());
-                                 //    newPath =  new Path(id, nptlist);
-                                 //    uniquepathcache.put(possible_ports,newPath);    
-                                
-                                 // }
+         
                                 }
         						else{
         							log.info("Connection retrieved successfully,{}",byteArray2Hex(token));
@@ -756,19 +745,19 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         									subNum=1;
         								}
         								c.addRoutes(srcIp2, dstIp2, v2, subNum);
-        								Path path2 = c.getNextRoute(srcIp2, dstIp2);
-        								log.info("Selected Route (MPJOIN) = " + path2.toString());
-        								//log.info("Switch id:{},Port{}",sw.getId().toString(),v2.get(0).getPath().get(1).getPortId().toString());
-        								U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
-                                        U64 cookie = makeForwardingCookie(decision, flowSetId);
-        								pushRoute(path2, m, pi, sw.getId(), cookie, 
-        					                    cntx, requestFlowRemovedNotifn,
-        					                    OFFlowModCommand.ADD);
-                                        for (NodePortTuple npt : path2.getPath()) {
-                                                //log.info(npt.toString());
-                                                flowSetIdRegistry.registerFlowSetId(npt, flowSetId);
-                                        }
-                                        uniquepathcache.put(ports,path2);
+        								newPath = c.getNextRoute(srcIp2, dstIp2);
+//        								log.info("Selected Route (MPJOIN) = " + path2.toString());
+//        								//log.info("Switch id:{},Port{}",sw.getId().toString(),v2.get(0).getPath().get(1).getPortId().toString());
+//        								U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
+//                                        U64 cookie = makeForwardingCookie(decision, flowSetId);
+//        								pushRoute(path2, m, pi, sw.getId(), cookie, 
+//        					                    cntx, requestFlowRemovedNotifn,
+//        					                    OFFlowModCommand.ADD);
+//                                        for (NodePortTuple npt : path2.getPath()) {
+//                                                //log.info(npt.toString());
+//                                                flowSetIdRegistry.registerFlowSetId(npt, flowSetId);
+//                                        }
+//                                        uniquepathcache.put(ports,path2);
         							}
         						}
                                 if(newPath!=null){
@@ -777,16 +766,12 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                                         U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
                                         U64 cookie = makeForwardingCookie(decision, flowSetId);
 
-
-                                        IOFSwitch  currentSwitch = switchService.getSwitch((newPath.getPath().get(1).getNodeId()));
-                                        OFPort currentPort = newPath.getPath().get(1).getPortId();         
-                                        IOFSwitch  nextSwitch = switchService.getSwitch((newPath.getPath().get(2).getNodeId()));
-                                        OFPort nextPort = newPath.getPath().get(2).getPortId();
                                         //DropMeter dm = new DropMeter();
                                         
                                         //log.info("rate:{}",dm.createMeter(currentSwitch, currentPort, nextSwitch, nextPort));
                                         //dm.bindMeterWithFlow(srcPort, destcpPort, srcIp2, currentSwitch, srctcpPort, newPath);
                                         //dm.addpathtoFDMmodule(newPath);
+                                        log.info("ADD PATH FROM JOIN "+newPath.toString());
                                         fdmservice.addPath(srcIp2,dstIp2,srctcpPort,destcpPort,newPath);
                                         
                                         pushRoute(newPath, m, pi, sw.getId(), cookie, 
@@ -799,7 +784,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                                         uniquepathcache.put(ports,newPath);
                                 }
                                 else{
-                                        log.info("warning!...empty path ");
+                                        log.warn("warning!...empty path ");
                                 }
         					}
         					else{
@@ -891,14 +876,11 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
                     U64 cookie = makeForwardingCookie(decision, flowSetId);
 
-                    IOFSwitch  currentSwitch = switchService.getSwitch((p.getPath().get(1).getNodeId()));
-                    OFPort currentPort = p.getPath().get(1).getPortId();         
-                    IOFSwitch  nextSwitch = switchService.getSwitch((p.getPath().get(2).getNodeId()));
-                    OFPort nextPort = p.getPath().get(2).getPortId();
                     //DropMeter dm = new DropMeter();
                     //log.info("rate:{}",dm.createMeter(currentSwitch, currentPort, nextSwitch, nextPort));
                     //dm.bindMeterWithFlow(srcPort, destcpPort, srcIp2, currentSwitch, srctcpPort, p);
                     //dm.addpathtoFDMmodule(p);
+                    log.info("ADD PATH FROM UNIQUEPATH CACHE "+p.toString());
                     fdmservice.addPath(srcIp2,dstIp2,srctcpPort,destcpPort,p);
                     pushRoute(uniquepathcache.get(ports), m, pi, sw.getId(), cookie,
                         cntx, requestFlowRemovedNotifn,OFFlowModCommand.MODIFY);

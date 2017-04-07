@@ -87,11 +87,16 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 				/*
 				 * test version 1.0 calculate result every 0.5s;
 				 */
-				if(pathUpdates.peek()!=null){
-					calculateFDM();
-					populatemeter();
+				while(pathUpdates.peek()!=null){
+					PathUpdate up = pathUpdates.poll();
+//					List<NodePortTuple> nslist = up.p.getPath();
+//					Collections.reverse(nslist);
+//					up.p.setPath(nslist);
+					log.info("get path from quqeu: "+up.p.toString());
+					currentInstance.addPathtoTopology(up.p);
+					if(pathUpdates.peek()==null&&calculateFDM())
+						populatemeter();
 					//log.info("queue size: " + Integer.toString( pathUpdates.size()));
-					pathUpdates.removeAll(pathUpdates);
 				}
 				//log.info("1 tick");
 			}
@@ -303,7 +308,6 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 		}
 		log.info("addPath we need to check it out: " + p.toString());
 		updatePath(pathstr,p,PathUpdate.ADD);
-		currentInstance.addPathtoTopology(p);
 	}
 	
 	@Override 
@@ -365,8 +369,8 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 					Flowinfo fi = it.next();
 					List<NodePortTuple> nslist = fi.path.getPath();
 					int index = nslist.size();
-					String porttuple = nslist.get(index-1).getNodeId().toString()+'-'+nslist.get(index-1).getPortId().toString()+
-							'-'+nslist.get(index-1).getNodeId().toString()+'-'+nslist.get(index-1).getPortId().toString();
+					String porttuple = nslist.get(index-1).getNodeId().toString()+'-'+'0'+
+							'-'+nslist.get(index-1).getNodeId().toString()+'-'+'0';
 					log.info("check tuple: " + porttuple + "with "+ rule_Key);
 					if(rule_Key.equals(porttuple)){
 						it.remove();
@@ -399,10 +403,10 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 	 * Main function for doing FDM
 	 * This only calculates and fill gflow
 	 */
-	private void calculateFDM() {
+	private boolean calculateFDM() {
 		// TODO FDM code here
 		FlowDeviationMethod fdm = new FlowDeviationMethod(this.currentInstance);
-		fdm.runFDM();
+		return fdm.runFDM();
 	}
 	
 	private void updateUser(){
@@ -438,8 +442,8 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 		for(Map.Entry<String, Set<Flowinfo>> entry:activeuser.entrySet()){
 			for(Flowinfo fi:entry.getValue()){
 				Path p = fi.path;
-				List<NodePortTuple> nslist = new ArrayList<NodePortTuple>(p.getPath());
-				Collections.reverse(nslist);
+				List<NodePortTuple> nslist = p.getPath();
+				//Collections.reverse(nslist);
 				log.info("in populatemeter : "+ fi.toString());
 				IOFSwitch  currentSwitch = switchService.getSwitch(nslist.get(1).getNodeId());
 	            OFPort currentPort = nslist.get(1).getPortId();         
@@ -447,7 +451,11 @@ public class FDMCalculator implements IFDMCalculatorService, ITopologyListener, 
 	            OFPort nextPort = nslist.get(2).getPortId();
 	            Float rate = getFlowBW(nslist.get(1).getNodeId(),currentPort,nslist.get(2).getNodeId(),nextPort);
 				dm.createMeter(currentSwitch, currentPort,nextSwitch,nextPort,rate);
-				log.info("bind mater "+ Float.toString(rate) + "on " + fi.toString());
+				log.info("bind mater "+ Float.toString(rate) + "on " +
+								" SrcID: "+currentSwitch.toString()+
+								" SrcPort:"+currentPort.toString()+
+								" NextID:"+ nextSwitch.toString()+
+								" NextPort:"+nextPort.toString());
 				dm.bindMeterWithFlow(nslist.get(0).getPortId(),fi.getdst(),fi.gettcpdstport(), fi.getsrc(), currentSwitch, fi.gettcpsrcport(), new Path(p.getId(),nslist));
 			}
 		}

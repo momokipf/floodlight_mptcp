@@ -144,7 +144,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
     private static final short FLOWSET_BITS = 28;
     protected static final short FLOWSET_SHIFT = DECISION_BITS;
-    //private static final long FLOWSET_MASK = ((1L << FLOWSET_BITS) - 1) << FLOWSET_SHIFT;
+    private static final long FLOWSET_MASK = ((1L << FLOWSET_BITS) - 1) << FLOWSET_SHIFT;
     private static final long FLOWSET_MAX = (long) (Math.pow(2, FLOWSET_BITS) - 1);
     private static final IPv4Address MPTCP_MASK = IPv4Address.of(0xFFFFFF00);
     
@@ -159,7 +159,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
     
     private  ExpiringMap<String, MptcpConnection> flows;
     
-    private  ExpiringMap<String, ArrayList<Path>> pathCache;
+    private  ExpiringMap<String, List<Path>> pathCache;
     
     private  ExpiringMap<String, Path> uniquepathcache;
     public Random randomGenerator;
@@ -579,10 +579,13 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         	if(ip2.getProtocol().equals(IpProtocol.TCP)){
         		IPv4Address srcIp2 = ip2.getSourceAddress();
 				IPv4Address dstIp2 = ip2.getDestinationAddress();
+				IPv4Address srcIpgroup = srcIp2.applyMask(MPTCP_MASK);
+				log.info("source IP:"+srcIp2.toString() + " source group "+srcIpgroup);
 				tcp2 = (TCP) ip2.getPayload();
 				TransportPort srctcpPort = tcp2.getSourcePort();
 				TransportPort destcpPort = tcp2.getDestinationPort();
 				String ports = srcIp2.toString()+"-"+String.valueOf(srctcpPort.getPort()) + "-"+dstIp2.toString() +  "-" + String.valueOf(destcpPort.getPort());
+				//String ports = srcIpgroup.toString()+"-"+String.valueOf(srctcpPort.getPort()) + "-"+dstIp2.toString() +  "-" + String.valueOf(destcpPort.getPort());
 				//log.info("TCP package {}",ports);
                 if(!uniquepathcache.containsKey(ports)){
 				    byte[] options;
@@ -591,12 +594,14 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                     String possible_ports = dstIp2.toString() +  "-" + String.valueOf(destcpPort.getPort())+"-"+srcIp2.toString()+"-"+String.valueOf(srctcpPort.getPort());
                     if((flag&(short)0x010)==(short)0x010)
                     {
+                    	
                         log.info("ack packages: {} ACK:{}",ports,possible_ports);
                         Path p = uniquepathcache.get(possible_ports);
                         if(p!=null&&!p.getPath().isEmpty())
                         {
                             log.info("reverse path");    /*since fdm algorithm changed, symmetric assumption can be removed*/
-                            List<NodePortTuple> nptlist =  p.getPath();
+                            //List<NodePortTuple> nptlist =  p.getPath();
+                            List<NodePortTuple> nptlist = new ArrayList<NodePortTuple>(p.getPath());
                             Collections.reverse(nptlist);
                             PathId id = new PathId(srcSw,dstAp.getNodeId());
                             Path newPath =  new Path(id, nptlist);
@@ -625,27 +630,40 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                             int subtype = tcp2.getMptcpSubtype();
 					        if(subtype==TCP.MP_CAPABLE)
         					{
-        						primaryIps.put(srcIp2+"-"+dstIp2,0);
+        						//primaryIps.put(srcIp2+"-"+dstIp2,0);
+					        	primaryIps.put(srcIpgroup+"-"+dstIp2,0);
         						log.info("New mptcp sys on {}",srcIp2+"-"+dstIp2);
-        						ArrayList<Path> v = new ArrayList<Path>();
+        						List<Path> v = new ArrayList<Path>();
                                 OFFlowModCommand flowModCommand =  OFFlowModCommand.ADD;
-        						if(pathCache.containsKey(srcIp2+"-"+dstIp2)){
-        							v = pathCache.get(srcIp2+"-"+dstIp2);
+        						if(pathCache.containsKey(srcIpgroup+"-"+dstIp2)){
+        							v = pathCache.get(srcIpgroup+"-"+dstIp2);
         						}
         						else{
-        								
-        							v = (ArrayList<Path>) this.makeitetoe(srcSw, 
-                                                            srcPort,
-                                                            dstAp.getNodeId(),
-                                                            dstAp.getPortId(),
-                                                            k);
-        							pathCache.put(srcIp2+"-"+dstIp2, v);
+        							v = this.makeitetoe(srcSw, 
+                                          dstAp.getNodeId(),
+                                          k);
+        							/*
+        							 * This is for the fullmesh scenario where mptcp is implemented by using one IP address
+        							 */
+//        							v = (ArrayList<Path>) this.makeitetoe(srcSw, 
+//                                                            srcPort,
+//                                                            dstAp.getNodeId(),
+//                                                            dstAp.getPortId(),
+//                                                            k);
+        							
+        							pathCache.put(srcIpgroup+"-"+dstIp2, v);
         						}
 
                                 for(Path p:v){
 
                                     if(!p.getPath().isEmpty())
                                     {
+                                    	 p = this.makepathEtoE(srcSw, 
+                                                            srcPort,
+                                                            dstAp.getNodeId(),
+                                                            dstAp.getPortId(),
+                                                            p);
+                                    	
                                          U64 flowSetId = flowidset.get(p.getPath().toString());
                                          if(flowSetId == null)
                                          {
@@ -687,48 +705,51 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                             else if(subtype==TCP.MP_JOIN)
         					{
         						//for(byte [] key:flows.
-        						log.info("join op on exist ip pair {}",srcIp2+"-"+dstIp2);
+        						log.info("join op on exist ip pair {}",srcIpgroup+"-"+dstIp2);
         						byte [] token = tcp2.getMPtcpToken();
         						MptcpConnection c = flows.get(byteArray2Hex(token));
                                 Path newPath = null;
         						if(c==null){
         						log.info("new token ip pair:{}",byteArray2Hex(token));
-
                                 if(!uniquepathcache.containsKey(possible_ports)){
-	        						MptcpConnection newconnection = new MptcpConnection(srcIp2,dstIp2,srctcpPort.getPort(),destcpPort.getPort(),token);
+	        						MptcpConnection newconnection = new MptcpConnection(srcIpgroup,dstIp2,srctcpPort.getPort(),destcpPort.getPort(),token);
 	        						flows.put(byteArray2Hex(token),newconnection );
-	        						ArrayList<Path> v2  = new ArrayList<Path>();
-	        						if(pathCache.containsKey(srcIp2+"-"+dstIp2)){
-	        							v2 = pathCache.get(srcIp2+"-"+dstIp2);
+	        						List<Path> v2  = new ArrayList<Path>();
+	        						if(pathCache.containsKey(srcIpgroup+"-"+dstIp2)){
+	        							v2 = pathCache.get(srcIpgroup+"-"+dstIp2);
 	        						}
 	        						else{
-	        							v2 = (ArrayList<Path>) this.makeitetoe(srcSw, 
-	                                                            srcPort,
-	                                                            dstAp.getNodeId(),
-	                                                            dstAp.getPortId(),
-	                                                            k);
-	        							pathCache.put(srcIp2+"-"+dstIp2, v2);
+	        							v2 = this.makeitetoe(srcSw, 
+	                                            dstAp.getNodeId(),
+	                                            k);
+//	        							v2 = (ArrayList<Path>) this.makeitetoe(srcSw, 
+//	                                                            srcPort,
+//	                                                            dstAp.getNodeId(),
+//	                                                            dstAp.getPortId(),
+//	                                                            k);
+	        							pathCache.put(srcIpgroup+"-"+dstIp2, v2);
 	        						}
 	        						int subNum=0;
-	        						if(primaryIps.containsKey(srcIp2+"-"+dstIp2)){
+	        						if(primaryIps.containsKey(srcIpgroup+"-"+dstIp2)){
 	        							subNum=1;
 	        						}
-	        						newconnection.addRoutes(srcIp2, dstIp2, v2, subNum);
-	        						newPath = newconnection.getNextRoute(srcIp2, dstIp2);
+	        						newconnection.addRoutes(srcIpgroup, dstIp2, (ArrayList<Path>)v2, subNum);
+	        						newPath = newconnection.getNextRoute(srcIpgroup, dstIp2);
 	                                //uniquepathcache.put(ports,newPath);
         						}
          
                                 }
         						else{
         							log.info("Connection retrieved successfully,{}",byteArray2Hex(token));
-        							if(c.ipsAlreadySeen(srcIp2, dstIp2)){
+        							if(c.ipsAlreadySeen(srcIpgroup, dstIp2)){
         								log.debug("Mptcpconnection:Seen this combination");
-        								newPath =  c.getNextRoute(srcIp2, dstIp2);
+        								newPath =  c.getNextRoute(srcIpgroup, dstIp2);
         								//uniquepathcache.put(ports,newPath);
         							}
         							else{
         								log.info("Not seen those ips");
-        								ArrayList<Path> v2  = new ArrayList<Path>();
+        								/*
+        								List<Path> v2  = new ArrayList<Path>();
         								if(pathCache.containsKey(srcIp2+"-"+dstIp2)){
         									v2 = pathCache.get(srcIp2+"-"+dstIp2);
         								}
@@ -746,6 +767,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         								}
         								c.addRoutes(srcIp2, dstIp2, v2, subNum);
         								newPath = c.getNextRoute(srcIp2, dstIp2);
+        								*/
 //        								log.info("Selected Route (MPJOIN) = " + path2.toString());
 //        								//log.info("Switch id:{},Port{}",sw.getId().toString(),v2.get(0).getPath().get(1).getPortId().toString());
 //        								U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
@@ -761,6 +783,12 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         							}
         						}
                                 if(newPath!=null){
+	                                	newPath = this.makepathEtoE(srcSw, 
+	                                            srcPort,
+	                                            dstAp.getNodeId(),
+	                                            dstAp.getPortId(),
+	                                            newPath);
+                                		
                                         log.info("Selected Route (MPJOIN) = " + newPath.toString());
                                         //log.info("Switch id:{},Port{}",sw.getId().toString(),v2.get(0).getPath().get(1).getPortId().toString());
                                         U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
@@ -1003,7 +1031,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 ret.add(p);
             }
         }
-
+        
         log.info("multipath: size={}",ret.size());
 //        for(Path p:ret){
 //        if(!p.getPath().isEmpty()){
@@ -1012,6 +1040,51 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 //        }
 
         return ret;
+    }
+    protected List<Path> makeitetoe(DatapathId srcId,
+            		DatapathId dstId,int k ){
+    	List<Path> r = routingEngineService.getPathsSlow(srcId,dstId,k);
+//    	List<Path> ret = new ArrayList<Path>();
+//        Set<NodePortTuple> visited = new HashSet<NodePortTuple>();
+        Collections.sort(r);
+//        log.info("raw multipath: size={}",r.size());
+//        for(Path p:r){
+//        	boolean valid = true;
+//            for(NodePortTuple n:p.getPath())
+//            {
+//                if(visited.contains(n))
+//                {
+//                    //log.info("invalid npt:{}",n.toString());
+//                    valid = false;
+//                    break;
+//                }
+//                visited.add(n);
+//            }
+//            if(valid)
+//            {
+//                ret.add(p);
+//            }
+//        }
+//        
+//        log.info("multipath: size={}",ret.size());
+        return r;
+    }
+    
+    
+    protected Path makepathEtoE(DatapathId srcId, OFPort srcPort,
+            					DatapathId dstId, OFPort dstPort,Path p){
+    	List<NodePortTuple> nptlist = p.getPath();
+    	if(nptlist.get(0).getNodeId().equals(nptlist.get(1).getNodeId())){
+    		nptlist.get(0).setPortId(srcPort);
+    	}
+    	else{
+	    	NodePortTuple npt = new NodePortTuple(srcId,srcPort);
+	    	nptlist.add(0,npt);
+	    	npt = new NodePortTuple(dstId,dstPort);
+	    	nptlist.add(npt);
+	    	p.setPath(nptlist);
+    	}
+    	return p;
     }
     
     /**

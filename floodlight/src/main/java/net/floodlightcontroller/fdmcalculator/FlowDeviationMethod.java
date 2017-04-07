@@ -51,9 +51,9 @@ class FlowDeviationMethod {
 		shortestPath = new HashMap<PathId,LinkedList<Integer>>();
 		total_req = FDMtopoinstance.getTotal_requirement();
 		FDlen = new Float[FDMtopoinstance.getNoLinks()];
-//		for(int i= 0; i <FDMtopoinstance.getallLinks().size();++i ){
-//			log.info('('+Integer.toString(i)+')' + ' '+FDMtopoinstance.getallLinks().get(i).toString());
-//		}
+		for(int i= 0; i <FDMtopoinstance.getallLinks().size();++i ){
+			log.info('('+Integer.toString(i)+')' + ' '+FDMtopoinstance.getallLinks().get(i).toString());
+		}
 	}
 
 
@@ -82,7 +82,7 @@ class FlowDeviationMethod {
 //		return globalFlows;
 //	}
 
-	public Float[] runFDM() {
+	public boolean runFDM() {
 		
 //		//Initialization Code
 //		
@@ -112,17 +112,12 @@ class FlowDeviationMethod {
 		SetLinkLens(globalFlow,FDMtopoinstance.getMsgLen(),FDlen);
 		SetSP(FDlen);
 		LoadLinks(globalFlow);
-		Aresult = AdjustCaps(globalFlow,NewCap);
-		if (Aresult == 1)
-			Aflag = false;
-		else
-			Aflag = true;
+		Aflag = AdjustCaps(globalFlow,NewCap);
 		CurrentDelay = CalcDelay(globalFlow, NewCap,FDMtopoinstance.getMsgLen(), total_req);
 
-		Integer count = 0;
 		//start to run FDM
 		while(Aflag || (CurrentDelay < PreviousDelay*(1-EPSILON))) {
-			SetLinkLens(globalFlow,FDMtopoinstance.getMsgLen(),FDlen);
+			SetLinkLens(globalFlow,NewCap,FDMtopoinstance.getMsgLen(),FDlen);
 			SetSP(FDlen);
 			LoadLinks(EFlow);
 			//previous delay based on current NewCap
@@ -130,16 +125,14 @@ class FlowDeviationMethod {
 			Superpose(EFlow, globalFlow, NewCap, total_req, FDMtopoinstance.getMsgLen());
 			//current delay after superposition
 			CurrentDelay = CalcDelay(globalFlow, NewCap, FDMtopoinstance.getMsgLen(), total_req);
-			StringBuffer ss = new StringBuffer();
-			for(Float i:globalFlow){
-				ss.append(Float.toString(i)+' ');
-			}
-			log.info("Intermediat result: "+ ss.toString());
 			if(Aflag) {
-				Aresult = AdjustCaps(globalFlow, NewCap);
-				Aflag = (Aresult==1)?false:true;
+				Aflag = AdjustCaps(globalFlow, NewCap);
 			}
-			
+//			StringBuffer ss = new StringBuffer();
+//			for(Float i:globalFlow){
+//				ss.append(Float.toString(i)+' ');
+//			}
+			//log.info("Intermediat result: "+ ss.toString());
 			if(Aflag && (CurrentDelay>=PreviousDelay*(1-EPSILON))){
 				feasible = false;
 				break;
@@ -151,11 +144,14 @@ class FlowDeviationMethod {
 			StringBuffer ss = new StringBuffer();
 			
 			for(int i = 0 ; i < this.FDMtopoinstance.getNoLinks();++i){
-				this.FDMtopoinstance.getCustomizedLink(i).currentlinklength = globalFlow[i];
+				if(globalFlow[i]!=0.0f)
+					this.FDMtopoinstance.getCustomizedLink(i).currentlinklength = globalFlow[i];
+				else
+					this.FDMtopoinstance.getCustomizedLink(i).currentlinklength = 0.1f;
 				ss.append(Float.toString(globalFlow[i])+' ');
 			}
 			log.info("FDM calcuate done" + ss.toString());
-			return globalFlow;
+			return true;
 		}
 		else{
 			//judge whether the problem is feasible 
@@ -181,39 +177,57 @@ class FlowDeviationMethod {
 //			count++;
 			log.info("infeasible");
 		}
-		return globalFlow;
+		return false;
 	}
 
 	
 	private void SetLinkLens(Float[] Flow,Integer MsgLen, Float[] Len) {
-		log.info("/*********************Start fdm SetLinkLens*****************************/");
+		log.debug("/*********************Start fdm SetLinkLens*****************************/");
 		int i = 0;
 		for(CustomizedLink clink:this.FDMtopoinstance.getallLinks()){
 			//clink.currentlinklength = DerivDelay(Flow[i++],clink.getCapacity(), MsgLen);
-			Len[i] = DerivDelay(Flow[i++],clink.getCapacity(), MsgLen);
+			//if(i<Flow.length)
+				Len[i] = DerivDelay(Flow[i++],clink.getCapacity(), MsgLen);
 		}
 	}
 
+	private void SetLinkLens(Float[] Flow,Float[] NewCap,Integer MsgLen, Float[] Len) {
+		log.debug("/*********************Start fdm SetLinkLens*****************************/");
+		for(int i=0;i<Flow.length;++i){
+			//clink.currentlinklength = DerivDelay(Flow[i++],clink.getCapacity(), MsgLen);
+			//if(i<Flow.length)
+				Len[i] = DerivDelay(Flow[i],NewCap[i], MsgLen);
+		}
+	}
 	
 	private void SetSP(Float[] len) {
-		log.info("/*********************Start fdm SetSP*****************************/");
+		log.debug("/*********************Start fdm SetSP*****************************/");
+//		StringBuffer ss = new StringBuffer();
+//		for(int i = 0 ;i<len.length;++i){
+//			ss.append(Float.toString(len[i])+",");
+//		}
+//		log.debug("FDLEN:"+ss);
 		for(PathId pid: this.FDMtopoinstance.getadj().keySet()){
 			Float dis = Float.MAX_VALUE;
-			for(LinkedList<Integer> l:this.FDMtopoinstance.getadj().get(pid)){
+			List<LinkedList<Integer>> array = FDMtopoinstance.getadj().get(pid);
+			for(int i = 0; i<array.size();++i){
+			//for(LinkedList<Integer> l:this.FDMtopoinstance.getadj().get(pid)){
 				//log.info(l.toString());
+				LinkedList<Integer> l = array.get(i);
 				Float tmp_dis = calculatAlllatency(l,len);
-				//log.info("the path of "+ l.toString()+" latency : "+Float.toString(tmp_dis));
+				log.debug("the path of "+ l.toString()+" latency : "+Float.toString(tmp_dis));
 				if(tmp_dis<dis){
 					dis = tmp_dis;
 					shortestPath.put(pid,l);
 				}
 			}
+			log.debug("shortest path "+shortestPath.get(pid).toString()+"pid:"+pid.toString()+" latency : "+Float.toString(dis));
 		}
 	}
 	
 	private Float calculatAlllatency(LinkedList<Integer> path,Float[] len){
 		Float latency = 0.0f;
-		log.info("/*********************Start fdm calculatAlllatency*****************************/");
+		//log.info("/*********************Start fdm calculatAlllatency*****************************/");
 		int index = 0 ;
 		for(Integer p:path){
 			if(index==0||index==path.size()-1)
@@ -226,7 +240,7 @@ class FlowDeviationMethod {
 			//log.info('('+Integer.toString(p)+')' + ' '+curlink.toString());
 			latency += /*curlink.currentlinklength*/len[p];  // + curlink.getLatency().getValue()/100; 
 		}
-		log.info(path.toString() + "latency" + Float.toString(latency));
+		//log.info(path.toString() + "latency" + Float.toString(latency));
 		return latency;
 	}
 	
@@ -271,57 +285,68 @@ class FlowDeviationMethod {
 	
 	*/
 	private void LoadLinks(Float Flow[]) {
-		log.info("/*********************Start fdm LoadLinks*****************************/");
+		//log.info("/*********************Start fdm LoadLinks*****************************/");
 		for(Integer i = 0; i < Flow.length; i ++) {
 			Flow[i] = 0.0f;
 		}
 		for(PathId pid: this.shortestPath.keySet()){
 			float req = FDMtopoinstance.getCustomizedLink(shortestPath.get(pid).get(0)).getrequirement();
-			log.info("retrieve req from the head: "+Float.toString(req));
-			for(Integer index:shortestPath.get(pid)){
+			//log.info("set path "+pid.toString() + "+"+shortestPath.get(pid).toString()+Float.toString(req));
+			for(int index:shortestPath.get(pid)){
+//				if(index==0||index==shortestPath.get(pid).size()-2 )
+//					continue;
 				Flow[index]+=req;
 			}
 		}	
 	}
 
 	
-	private Float AdjustCaps(Float Flow[],Float NewCap[]) {
+	private boolean AdjustCaps(Float Flow[],Float NewCap[]) {
 		Float factor = 1.0f;
+		//StringBuffer ss = new StringBuffer();
+		log.debug("size Flow:"+Integer.toString(Flow.length)+ "size of allLink:"+Integer.toString(FDMtopoinstance.getNoLinks()));
 		for( Integer i = 0; i < Flow.length; i++) {
 			Float cap = this.FDMtopoinstance.getCustomizedLink(i).getCapacity();
 			factor = Math.max(factor, (1+DELTA)*Flow[i]/cap);
 		}
 		for(Integer i = 0; i < Flow.length; i++) {
 			NewCap[i] = factor*FDMtopoinstance.getCustomizedLink(i).getCapacity();
+			//ss.append("; "+Float.toString(NewCap[i]));
 		}
-		//log.info("AdjustCaps: result : ");
-		log.info(" factor" + Float.toString(factor));
-		return factor;
+		//log.info("AdjustCaps: result : "+ss.toString());
+		//log.info(" factor" + Float.toString(factor));
+		if(factor==1.0f)
+			return false;
+		else 
+			return true;
 	}
 
 	private Float CalcDelay(Float Flow[], Float Cap[], Integer MsgLen, Float TotReq) {
 		Float sum = 0.0f;
 		for (Integer u = 0; u < Flow.length; u++) {
-			sum = sum + Flow[u]*LinkDelay(Flow[u],Cap[u],MsgLen);
+			sum +=  Flow[u]*LinkDelay(Flow[u],Cap[u],MsgLen);
 		}
 		return sum/TotReq;
 	}
 
 void Superpose(Float Eflow[], Float Gflow[], Float Cap[], Float TotReq, Integer MsgLen) {
+	
 	Float x = FindX(Gflow, Eflow, Cap, TotReq, MsgLen);
 	for(Integer l = 0; l < Gflow.length; l++) {
-//		Pflow[l] = Gflow[l];
 		Gflow[l] = x*Eflow[l] + (1-x)*Gflow[l];
 	
 	}
-	
+	log.debug("find x is " + Float.toString(x)+"total_req:"+Float.toString(TotReq));
 }
 
 Float FindX(Float Gflow[], Float Eflow[], Float Cap[], Float TotReq, Integer MsgLen) {
 
 	Float xLimit = 0.0f, st = 0.0f, end = 1.0f;
 	Float[] Flow = new Float[Gflow.length];
-	for (; (end-st)>0.0001;) {
+	for(int i = 0; i < Flow.length; i++) {
+		Flow[i] = 0.0f;
+	}
+	for (; (end-st)>EPSILON;) {
 		Boolean exc = false;
 		xLimit = st + (end - st) / 2;
 		for (int i = 0; i < Flow.length; i++) {

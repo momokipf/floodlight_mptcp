@@ -128,12 +128,19 @@ public class FdmReq_CapResource extends ServerResource{
     		return "Invalid rule, set rules failed\n";
     	}
 //    	if(src_sw.equals(dst_sw)){
-//    		String rule_key = src_sw+'-'+'?'+'-'+dst_sw+'-'+'?';
+//    		String rule_key = src_sw+'-'+'0'+'-'+dst_sw+'-'+'0';
 //    		if(fds.getRules().containsKey(rule_key)){
+//    			if(cmd.equals("DELETE")){
+//    				fds.deleterule_path(rule_key);
+//    			}
 //    			return "Source rule already set in fdm";
 //    		}
 //    		else{
-//    			fds.addRule(rule_key, req, cap);
+//    			if(cmd.equals("ADD"))
+//    				fds.addRule(rule_key, req, cap);
+//    			else if(cmd.equals("DELETE")){
+//    				return "Rule was not set before";
+//    			}
 //    			return "Source rule set successfully";
 //    		}
 //    	}
@@ -159,7 +166,7 @@ public class FdmReq_CapResource extends ServerResource{
 				}
 				return "Rule set successfully";
 			}
-    	//}
+    	}
 		
-	}
+//	}
 }

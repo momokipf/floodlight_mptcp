@@ -142,6 +142,9 @@ class FDMTopology {
 			log.info("Path "+ path.toString() + " exist");
 			return;
 		}
+		
+		//log.info("addPathtoTopology "+ path.toString());
+		
 		existPath.add(path);
 		List<NodePortTuple> nstlist = path.getPath();
 		ArrayList<LinkedList<Integer>> ll = null;
@@ -156,7 +159,7 @@ class FDMTopology {
 		LinkedList<Integer> l = new LinkedList<Integer>();
 
 		//check source 
-		String switchTuple = nstlist.get(0).getNodeId().toString()+'-'+nstlist.get(0).getPortId().toString()+'-'+nstlist.get(0).getNodeId().toString()+'-'+nstlist.get(0).getPortId().toString();
+		String switchTuple = nstlist.get(0).getNodeId().toString()+'-'+'0'+'-'+nstlist.get(0).getNodeId().toString()+'-'+'0';
 		if(cuslinksmapping.containsKey(switchTuple)){
 			CustomizedLink link = cuslinksmapping.get(switchTuple);
 			int index = allLinks.indexOf(link);
@@ -167,10 +170,10 @@ class FDMTopology {
 		else{
 			CustomizedLink link = null;
 			if( rule.containsKey(switchTuple)){
-				link = new CustomizedLink(new Link(nstlist.get(0).getNodeId(),nstlist.get(0).getPortId(),nstlist.get(0).getNodeId(),nstlist.get(0).getPortId(), U64.of(0L)),rule.get(switchTuple).get(1),rule.get(switchTuple).get(0));
+				link = new CustomizedLink(new Link(nstlist.get(0).getNodeId(),OFPort.ofInt(0),nstlist.get(0).getNodeId(),OFPort.ofInt(0), U64.of(0L)),rule.get(switchTuple).get(1),rule.get(switchTuple).get(0));
 			}
 			else{
-				link = new CustomizedLink(new Link(nstlist.get(0).getNodeId(),nstlist.get(0).getPortId(),nstlist.get(0).getNodeId(),nstlist.get(0).getPortId(), U64.of(0L)));
+				link = new CustomizedLink(new Link(nstlist.get(0).getNodeId(),OFPort.ofInt(0),nstlist.get(0).getNodeId(),OFPort.ofInt(0), U64.of(0L)));
 			}
 			int index = allLinks.size();
 			allLinks.add(link);
@@ -221,7 +224,7 @@ class FDMTopology {
 		}
 		
 		ll.add(l);
-		log.info(path.getId().toString()+ll.toString());
+		//log.info(path.getId().toString()+ll.toString());
 		adjlinkfromswitch.put(path.getId(),ll);
 	}
 	
@@ -315,6 +318,7 @@ class FDMTopology {
 //	}
 
 	public Float getTotal_requirement() {
+		total_requirement = 0.0f;
 		for(CustomizedLink cl:this.allLinks){
 			total_requirement += cl.getrequirement();
 		}
